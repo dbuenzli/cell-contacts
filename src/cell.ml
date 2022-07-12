@@ -1,0 +1,256 @@
+(*---------------------------------------------------------------------------
+   Copyright (c) 2022 The cell programmers. All rights reserved.
+   Distributed under the ISC license, see terms at the end of the file.
+  ---------------------------------------------------------------------------*)
+
+open Gg
+open Gg_kit
+
+let dump_contour =
+  let dump_pt ppf pt = Fmt.pf ppf "%h, %h" (V2.x pt) (V2.y pt) in
+  let iter_pts f c = Pgon2.Contour.fold_pts (fun pt () -> f pt; ()) c () in
+  Fmt.brackets @@ Fmt.iter ~sep:Fmt.semi iter_pts dump_pt
+
+let dump_pgon =
+  let iter_contours f p = Pgon2.fold_contours (fun c () -> f c; ()) p () in
+  Fmt.brackets @@ Fmt.iter ~sep:Fmt.semi iter_contours dump_contour
+
+type spot =
+  { spot_id : Trackmate.spot_id;
+    pos : P2.t;
+    radius : float;
+    area : float;
+    pgon : Pgon2.t }
+
+let spot_of_tm_spot ?(scale = 1.) (s : Trackmate.spot) =
+  (* N.B. trackmate contour data is given relative to s.pos *)
+  let add center pt =
+    if scale = 1. then V2.add center pt else V2.add center (V2.smul scale pt)
+  in
+  let c = List.map (add s.pos) s.contour in
+  let c = Pgon2.Contour.of_seg_pts c in
+  let pgon = Pgon2.v [c] in
+  { spot_id = s.sid; pos = s.pos; area = s.area; radius = s.radius; pgon }
+
+type t =
+  { track_id : Trackmate.track_id;
+    frames : spot option Observation.frames; }
+
+let[@inline] check_spot_frame frames s =
+  let len = Array.length frames in
+  if s.Trackmate.frame >= len
+  then Fmt.failwith "Spot %d: frame %d not in [0;%d]" s.sid s.frame (len - 1)
+
+let find_spot (tm : Trackmate.t) track_id id =
+  match Trackmate.Int_map.find_opt id tm.spots_by_id with
+  | None -> Fmt.failwith "Track %d: spot %d unknown" track_id id
+  | Some s -> s
+
+let frames_of_track ?scale (tm : Trackmate.t) (track : Trackmate.track) =
+  let add_spot frames s =
+    check_spot_frame frames s;
+    match frames.(s.frame) with
+    | None -> frames.(s.frame) <- Some (spot_of_tm_spot ?scale s)
+    | Some s' when s'.spot_id = s.sid -> ()
+    | Some s' ->
+        Fmt.failwith "Track %d: frame %d: two spots %d and %d"
+          track.tid s.frame s.sid s'.spot_id
+  in
+  let add_edge tm frames (e : Trackmate.edge) =
+    add_spot frames (find_spot tm track.tid e.spot_source_id);
+    add_spot frames (find_spot tm track.tid e.spot_target_id);
+  in
+  let frames = Array.make tm.nframes None in
+  List.iter (add_edge tm frames) track.edges;
+  frames
+
+let of_track ?scale tm t =
+  { track_id = t.Trackmate.tid; frames = frames_of_track ?scale tm t }
+
+
+module Group = struct
+  type 'a data = 'a array
+  type nonrec t = t data
+
+  let of_trackmate ?scale (tm : Trackmate.t) =
+    try
+      let count = List.length tm.filtered_tracks in
+      let cells =
+        if count = 0 then [||] else
+        let dummy = { track_id = -1; frames = [||] } in
+        let cells = Array.make count dummy in
+        let add_track i tid =
+          match Trackmate.Int_map.find_opt tid tm.tracks_by_id with
+          | None -> Fmt.failwith "Unknown track: %d" tid
+          | Some t -> cells.(i) <- of_track ?scale tm t
+        in
+        List.iteri add_track tm.filtered_tracks;
+        cells
+      in
+      Ok cells
+    with
+    | Failure e -> Error e
+
+  let frame_count g =
+    if Array.length g = 0 then 0 else Array.length g.(0).frames
+
+  type intersections = Pgon2.t option data data Observation.frames
+
+  let err_frame_mismatch fc fc' =
+    Fmt.error "Frame number mismatch in cell groups: %d and %d" fc fc'
+
+  let log_err f c0 c1 err =
+    let msg = match err with
+    | `Edge_overlap -> "Edge overlap in input"
+    | `Topology_panic msg ->
+        (* Fmt.str "@[<v>%a@,and cell%d =@,%a@,and cell%d =@,%a@]"
+           Fmt.lines msg c0 dump_pgon p0.pgon c1 dump_pgon p1.pgon *)
+        msg
+    in
+    Fmt.epr "Warning: frame %d: cells %d %d: %a@." f c0 c1 Fmt.lines msg
+
+  let intersections g0 g1 =
+    let errs = Stdlib.ref 0 in
+    let g0_frames = frame_count g0 in
+    let g1_frames = frame_count g1 in
+    if g0_frames <> g1_frames then err_frame_mismatch g0_frames g1_frames else
+    let r _ = Array.make (Array.length g1) None in
+    let r _ = Array.init (Array.length g0) r in
+    let r = Array.init g0_frames r in
+    for f = 0 to g0_frames - 1 do
+      for c0 = 0 to Array.length g0 - 1 do
+        for c1 = 0 to Array.length g1 - 1 do
+          let p0 = g0.(c0).frames.(f) in
+          let p1 = g1.(c1).frames.(f) in
+          let isect = match p0, p1 with
+          | None, _ | _, None -> None
+          | Some p0, Some p1 ->
+              match Pgon2.inter p0.pgon p1.pgon with
+              | Error ((v, _), err) -> incr errs; log_err f c0 c1 err; Some v
+              | Ok (v, _) -> Some v
+          in
+          r.(f).(c0).(c1) <- isect
+        done
+      done;
+    done;
+    Ok (r, !errs)
+
+  let intersections_by_frames isect =
+    let frame_isect isect i =
+      let acc = Stdlib.ref [] in
+      for g0 = 0 to Array.length isect.(i) - 1 do
+        for g1 = 0 to Array.length isect.(i).(g0) - 1 do
+          match isect.(i).(g0).(g1) with
+          | None -> ()
+          | Some p -> acc := p :: !acc
+        done
+      done;
+      !acc
+    in
+    Array.init (Array.length isect) (frame_isect isect)
+end
+
+
+module Imap = Map.Make (Int)
+
+module Contact = struct
+  type spec =
+    { min_frame_count : int;
+      min_overlap_pct : int; }
+
+  type t =
+    { target : Trackmate.track_id;
+      start_frame : int; overlaps : float Observation.frames; }
+
+  let isect_area isect = (* FIXME Pgon2 *)
+    let add c acc = Gg_kit.Pgon2.Contour.area c +. acc in
+    (Gg_kit.Pgon2.fold_contours add isect 0.)
+
+  let add_contact spec contacts target start_frame overlaps =
+    let overlaps = Array.of_list (List.rev overlaps) in
+    if Array.length overlaps < spec.min_frame_count then () else
+    contacts := { target; start_frame; overlaps } :: !contacts
+
+  let find spec ~t ~target ~isects =
+    let cell_contacts t target isects i =
+      let frame_count = Array.length isects in
+      let cell = t.(i) in
+      let active = Stdlib.ref Imap.empty in
+      let contacts = Stdlib.ref [] in
+      let stop_if_exists target active =
+        begin match Imap.find_opt target !active with
+        | None -> ()
+        | Some (start_frame, overlaps) ->
+            add_contact spec contacts target start_frame overlaps;
+            active := Imap.remove target !active
+        end
+      in
+      let stop_active_contacts () =
+      let stop target (start_frame, overlaps) =
+        add_contact spec contacts target start_frame overlaps
+      in
+      Imap.iter stop !active; active := Imap.empty;
+    in
+    let min_overlap_pct = float spec.min_overlap_pct /. 100. in
+    for f = 0 to frame_count - 1 do match cell.frames.(f) with
+    | None -> stop_active_contacts ();
+    | Some spot ->
+        let inv_cell_area = 1. /. spot.area in
+        for target = 0 to Array.length target - 1 do
+          match isects.(f).(i).(target) with
+          | None -> stop_if_exists target active
+          | Some isect ->
+              let pct = isect_area isect *. inv_cell_area in
+              if pct < min_overlap_pct then stop_if_exists target active else
+              begin
+                let update = function
+                | None -> Some (f, [pct])
+                | Some (frame, os) -> Some (frame, pct :: os)
+                in
+                active := Imap.update target update !active
+              end
+        done;
+    done;
+    stop_active_contacts ();
+    List.rev !contacts
+    in
+    Array.init (Array.length t) (cell_contacts t target isects)
+
+  let count cs = List.length cs
+  let unique_count cs =
+    let add acc c = Trackmate.Int_set.add c.target acc in
+    Trackmate.Int_set.cardinal (List.fold_left add Trackmate.Int_set.empty cs)
+
+  type stats =
+    { num_contacting : int;
+      max_target_contacts : int; }
+
+  let stats cs =
+    let num_contacting = ref 0 in
+    let max_target_contacts = ref 0 in
+    for i = 0 to Array.length cs - 1 do
+      if cs.(i) <> [] then begin
+        let unique = unique_count cs.(i) in
+        incr num_contacting;
+        max_target_contacts := Int.max !max_target_contacts unique
+      end
+    done;
+    { num_contacting = !num_contacting;
+      max_target_contacts = !max_target_contacts }
+end
+
+(*---------------------------------------------------------------------------
+   Copyright (c) 2022 The cell programmers
+
+   Permission to use, copy, modify, and/or distribute this software for any
+   purpose with or without fee is hereby granted, provided that the above
+   copyright notice and this permission notice appear in all copies.
+
+   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  ---------------------------------------------------------------------------*)

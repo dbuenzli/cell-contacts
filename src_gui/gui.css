@@ -1,0 +1,153 @@
+/* Copyright (c) 2022 The cell programmers All rights reserved. */
+
+:root
+{
+  --r_track: #e9e9ed;
+  --r_track-border: #BBB;
+  --r_track-hover: #e5e5e5;
+  --r_thumb-active: #3793ff;
+  --r_thumb-hover: #005cc8;
+  --r_thumb: #0075ff;
+
+  --b_bg: #eee;
+  --b_border: #777;
+  --b_disabled-border: #AAA;
+  --b_active: #ccc;
+  --b_active-border: #666;
+
+  --bg: white;
+
+  --font_numeric_tabular: /* slashed-zero */ tabular-nums; }
+
+
+body { font-variant-numeric:var(--font_numeric_tabular)}
+body { max-inline-size: calc(1.75 * var(--measure_m));
+       margin: auto; }
+
+canvas { box-sizing: content-box; }
+.scale { position: relative; box-sizing:content-box; }
+.scale::before
+{ content: ''; position: absolute; top: 0; left: 0;
+  border-left: 1px solid black; border-right: 1px solid black;
+  height: 45%; width: 100%; }
+
+footer { color: #777 }
+
+/* Table */
+
+.datatable
+{ --datatable_rows: 10;
+  --datatable_hover: #f5f5f5;
+  --datatable_sep: #efefef;
+  --datatable_cell_pad: 0.4em;
+  --datatable_data_block_pad: 0.25em;
+  width: 100%;
+  border: 1px solid var(--datatable_sep); border-radius: 4px;
+  max-height:
+    calc(var(--datatable_rows) * (var(--leading_ratio_m) * 1em +
+                                  2 * var(--datatable_data_block_pad) + 1px));
+  overflow: auto }
+
+
+
+table { width: 100%; margin: 0;
+        border-collapse: separate; border-spacing: 0; white-space: nowrap; }
+
+th { color: #333; font-weight: 600; text-align:left; position: sticky; top: 0;
+     background: var(--bg); padding: var(--datatable_cell_pad)}
+td { padding-inline: var(--datatable_cell_pad);
+     padding-blocke: var(--datatable_data_block_pad); }
+
+td, th { border: 0px solid var(--datatable_sep); }
+td, th { border-inline-end-width: 1px; border-block-end-width: 1px; }
+td:last-child, th:last-child { border-inline-end-width: 0px }
+tbody tr:last-child td { border-block-end-width: 0px }
+td:first-child { color: #777 }
+tbody tr:hover { background: var(--datatable_hover); }
+.datatable .selected { background: var(--datatable_hover); }
+tr:hover { cursor: pointer }
+
+/* Range */
+
+input[type="range"] { appearance: none; cursor:pointer; width:14ch; }
+input[type="range"]:disabled { cursor:auto; opacity: 0.5; }
+input[type="range"]:focus { outline: none }
+
+input[type="range"]::-webkit-slider-runnable-track
+{ height: 1rem; background: var(--r_track);
+  border: solid 1px var(--r_track-border); border-radius: 2px; }
+
+input[type="range"]::-webkit-slider-thumb
+{ appearance: none; height: 1rem; width: 0.5rem; background: var(--r_thumb);
+  margin-top:-1px; }
+
+input[type="range"]:hover::-webkit-slider-runnable-track
+{ background: var(--r_track-hover); }
+
+input[type="range"]:hover::-webkit-slider-thumb
+{ background: var(--r_thumb-hover); }
+
+input[type="range"]:active::-webkit-slider-thumb
+{ background: var(--r_thumb-active); }
+
+input[type="range"]:focus::-webkit-slider-thumb
+{ outline: 3px solid var(--r_thumb-active); outline-offset: 0.125rem; }
+
+
+input[type="range"]::-moz-range-track
+{ height: 1rem; background: var(--r_track);
+  border: solid 1px var(--r_track-border); border-radius: 2px; }
+
+input[type="range"]::-moz-range-thumb
+{ appearance: none; height: 1rem; width: 0.5rem; background: var(--r_thumb);
+  border: 1px solid var(--r_thumb); border-radius: 0; /* Still added by FF */
+  margin-top:-1px; }
+
+input[type="range"]:hover::-moz-range-track
+{ background: var(--r_track-hover); }
+
+input[type="range"]:hover::-moz-range-thumb
+{ background: var(--r_thumb-hover); }
+
+input[type="range"]:active::-moz-range-thumb
+{ background: var(--r_thumb-active); }
+
+input[type="range"]:focus::-moz-range-thumb
+{ outline: 3px solid var(--r_thumb-active); outline-offset: 0.125rem; }
+
+/* Button */
+
+button
+{ appearance: none;
+  display: inline-flex; align-items: center;
+  padding: 0.25em 0.5em;
+  background-color: var(--b_bg);
+  border: solid 1px var(--b_border);
+  border-radius: 3px;
+  cursor:pointer; }
+
+button:disabled, button:hover:active:disabled
+{ background-color: var(--b_bg);
+  border-color:var(--b_disabled-border); cursor: auto}
+
+button:hover:active
+{ background-color:var(--b_active); border-color:var(--b_active-border); }
+
+button .icon { margin-inline-end: 0.25em; }
+
+label {   display: inline-flex; align-items: center; }
+label .icon { margin-inline-end: 0.5em; }
+
+.icon * { stroke-width: 1 } /* N.B. specific to icon used. */
+.icon { width: 1.1em !important; height: 1.1em !important; }
+
+.spinner { visibility: hidden; }
+.spinner.spin { visibility: visible; animation: spin 1.5s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg)}; }
+
+.vz-input { display:flex; align-items: center; gap:1ex; }
+
+.download { text-decoration: none; color: inherit; }
+.download label { cursor:pointer; }
+.download label:hover { color: #1443c1; }
+.download:visited { color: black }
