@@ -64,8 +64,9 @@ let build_cell_gui proc b =
   let script = B0_build.in_build_dir b (Fpath.v "gui.js") in
   let app = B0_build.in_build_dir b (Fpath.v "cell.html") in
   let reads = [favicon; font; negsp_css; gui_css; linker; script] in
+  let version = vcs_describe b |> B00.Memo.fail_if_error m in
   List.iter (B00.Memo.file_ready m) [favicon;font; gui_css; negsp_css;linker];
-  begin B00.Memo.write m ~reads app @@ fun () ->
+  begin B00.Memo.write m ~reads ~stamp:version app @@ fun () ->
     Fut.sync @@
     let* linker = B00.Memo.read m linker in
     let* script = B00.Memo.read m script in
@@ -75,7 +76,6 @@ let build_cell_gui proc b =
     let* font = data_url b ~type':"font/woff2" font in
     let font_var = function "FONT" -> Some font | _ -> None in
     let* favicon = data_url b ~type':"image/x-icon" favicon in
-    let version = vcs_describe b |> B00.Memo.fail_if_error m in
     let vars = function
     | "SCRIPT" -> Some script
     | "VERSION" -> Some version
