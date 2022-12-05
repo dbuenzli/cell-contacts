@@ -45,7 +45,7 @@ module Make (Work : WORK) = struct
     try
       let q = { w = Worker.create url; results = Queue.create () } in
       let target = Worker.as_target q.w in
-      let () = Ev.listen Message.Ev.message (recv_result q) target in
+      let () = ignore (Ev.listen Message.Ev.message (recv_result q) target) in
       Fut.ok q
     with Jv.Error e -> Fut.error e
 
@@ -68,7 +68,7 @@ module Make (Work : WORK) = struct
         Worker.G.post v;
         Console.time_end tt)
 
-  let main () = Ev.listen Message.Ev.message recv_work G.target
+  let main () = ignore (Ev.listen Message.Ev.message recv_work G.target)
 end
 
 (*---------------------------------------------------------------------------

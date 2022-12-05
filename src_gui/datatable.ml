@@ -113,7 +113,7 @@ let tr sel_el sel_i on_click tm g contacts i =
       td_int t.Trackmate.number_merges;
       td_int t.Trackmate.number_gaps]
   in
-  Ev.listen Ev.click (on_click i) (El.as_target tr);
+  ignore (Ev.listen Ev.click (on_click i) (El.as_target tr));
   begin match sel_i with
   | Some j when i = j -> El.set_class selected true tr; sel_el := Some tr
   | _ -> ()

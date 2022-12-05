@@ -25,9 +25,9 @@ let blob_text ?progress b = match progress with
     in
     let error _e = set_fut (Error (Jv.to_error (Jv.get reader "error"))) in
     let t = Ev.target_of_jv reader in
-    Ev.listen ~opts:(Ev.listen_opts ~once:true ()) Ev.load ok t;
-    Ev.listen ~opts:(Ev.listen_opts ~once:true ()) Ev.error error t;
-    Ev.listen Ev.progress (fun e -> progress (progress_data e)) t;
+    ignore (Ev.listen ~opts:(Ev.listen_opts ~once:true ()) Ev.load ok t);
+    ignore (Ev.listen ~opts:(Ev.listen_opts ~once:true ()) Ev.error error t);
+    ignore (Ev.listen Ev.progress (fun e -> progress (progress_data e)) t);
     ignore (Jv.call reader "readAsText" [| Blob.to_jv b |]);
     fut
 
@@ -323,11 +323,11 @@ let download_csv ~tm ~t ~contacts  =
   let el =
     El.a ~at [El.label [Icon.document_arrow_down (); El.txt' ".csv file"]]
   in
-  Ev.listen Ev.click (fun _ ->
+  ignore (Ev.listen Ev.click (fun _ ->
       El.set_prop (El.Prop.jstr (Jstr.v "href"))
         Jstr.(v "data:text/csv;charset-utf-8," +
               (Jstr.v (Datatable.to_csv tm t contacts))) el)
-    (El.as_target el);
+      (El.as_target el));
   el
 
 
