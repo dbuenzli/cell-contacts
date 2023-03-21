@@ -18,7 +18,6 @@ let evidence = B0_ocaml.libname "vz.evidence"
 
 let cmdliner = B0_ocaml.libname "cmdliner"
 
-
 (* let vz_doc = B0_ocaml.libname "vz.doc" *)
 
 let show_uri_action f build u ~args =
@@ -180,12 +179,14 @@ let deploy =
   let build = Fpath.(B0_cmdlet.Env.b0_dir env / "b" / "user") in
   let protocol_md = Fpath.(B0_cmdlet.Env.scope_dir env / "PROTOCOL.md") in
   let protocol_html = Fpath.(build / "protocol" / "PROTOCOL.html") in
+  let changes_md = Fpath.(B0_cmdlet.Env.scope_dir env / "CHANGES.md") in
   let cell_html = Fpath.(build / "cell_gui"/ "cell.html") in
   let copy f dir =
     Os.File.copy ~force:true ~make_path:false ~src:f Fpath.(dir / basename f)
   in
   let* () = copy protocol_md dir in
   let* () = copy protocol_html dir in
+  let* () = copy changes_md dir in
   let* () = copy cell_html dir in
   Ok ()
 
