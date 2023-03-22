@@ -46,7 +46,7 @@ let to_pdf ~dst obs target t isect =
 let cell out_fmt dir outf no_isect t_scale  =
   Log.if_error ~use:1 @@
   let* dir = Fpath.of_string dir in
-  let* obs = Data.load_observation dir in
+  let* obs = Cli_data.load_observation dir in
   let* t, target, isect = intersections no_isect obs ~t_scale in
   match out_fmt with
   | `Pdf ->
