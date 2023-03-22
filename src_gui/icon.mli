@@ -18,27 +18,27 @@ val document_arrow_down : unit -> El.t
 val clock : unit -> El.t
 val square_2_stack : unit -> El.t
 
-val duplicate : El.t
-val eye : El.t
-val eye_off : El.t
+val duplicate : unit -> El.t
+val eye : unit -> El.t
+val eye_off : unit -> El.t
 val folder_arrow_down : unit -> El.t
-val minus_circle : El.t
+val minus_circle : unit -> El.t
 val pencil : unit -> El.t
 val pencil_alt : unit -> El.t
-val plus : El.t
-val plus_circle : El.t
-val plus_sm : El.t
-val save_as : El.t
-val tag : El.t
-val trash : El.t
-val view_grid_add : El.t
-val x_circle : El.t
+val plus : unit -> El.t
+val plus_circle : unit -> El.t
+val plus_sm : unit -> El.t
+val save_as : unit -> El.t
+val tag : unit -> El.t
+val trash : unit -> El.t
+val view_grid_add : unit -> El.t
+val x_circle : unit -> El.t
 
 (** {1:solid Solid} *)
 
-val solid_plus_circle : El.t
-val solid_view_grid_add : El.t
-val solid_x_circle : El.t
+val solid_plus_circle : unit -> El.t
+val solid_view_grid_add : unit -> El.t
+val solid_x_circle : unit -> El.t
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2022 The cell programmers.
