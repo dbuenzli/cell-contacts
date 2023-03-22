@@ -430,12 +430,12 @@ module Border : sig
   val style : style -> at
   (** [style st] sets the
       {{:https://developer.mozilla.org/en-US/docs/Web/CSS/border-style}
-      border-style}[border-style]} according to [st]. *)
+      [border-style]} according to [st]. *)
 
   val width : Size.t -> at
   (** [width s] sets the
       {{:https://developer.mozilla.org/en-US/docs/Web/CSS/border-width}
-      [width] to [s]. *)
+      [width]} to [s]. *)
 
   val block_start : Size.t -> at
   val block_end : Size.t -> at
