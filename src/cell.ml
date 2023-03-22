@@ -72,22 +72,19 @@ module Group = struct
   type 'a data = 'a array
   type nonrec t = t data
 
-  let of_trackmate ?scale (tm : Trackmate.t) =
+  let of_trackmate ?scale ?(min_max_distance = -.max_float) (tm : Trackmate.t) =
     try
-      let count = List.length tm.filtered_tracks in
-      let cells =
-        if count = 0 then [||] else
-        let dummy = { track_id = -1; frames = [||] } in
-        let cells = Array.make count dummy in
-        let add_track i tid =
+      let tracks =
+        let not_dead tid =
           match Trackmate.Int_map.find_opt tid tm.tracks_by_id with
           | None -> Fmt.failwith "Unknown track: %d" tid
-          | Some t -> cells.(i) <- of_track ?scale tm t
+          | Some t ->
+              if min_max_distance <= t.Trackmate.max_distance_traveled
+              then Some (of_track ?scale tm t) else None
         in
-        List.iteri add_track tm.filtered_tracks;
-        cells
+        List.filter_map not_dead tm.filtered_tracks
       in
-      Ok cells
+      Ok (Array.of_list tracks)
     with
     | Failure e -> Error e
 

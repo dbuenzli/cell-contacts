@@ -33,11 +33,14 @@ module Group : sig
   type nonrec t = t data
   (** A group of cells. *)
 
-  val of_trackmate : ?scale:float -> Trackmate.t -> (t, string) result
+  val of_trackmate :
+    ?scale:float -> ?min_max_distance:float -> Trackmate.t -> (t, string) result
   (** [of_trackmate tm] derives a cell group from the trackmate
       [tm]. Each filtered track found in the trackmate data defines a
       cell. [scale] scales the cell contour around their center
-      (defaults to [1.0]). *)
+      (defaults to [1.0]). [min_max_distance] keeps only cells whose
+      {!Trackmate.track.max_distance_traveled} is greater or equal than
+      this value, defaults to [-. max_float] *)
 
   val frame_count : t -> int
   (** [frame_count g] is the number of frames for each cell in the group. *)

@@ -10,11 +10,15 @@ open Gg
 open Vg
 
 let target_cells wcount obs =
-  Data.cell_group wcount ~scale:(S.const None) Observation.target obs
+  let scale = S.const None and min_max_distance = S.const None in
+  Data.cell_group wcount ~scale ~min_max_distance Observation.target obs
 
 let t_cells wcount obs setts =
   let scale = S.Option.some (S.map Data.Settings.t_scale setts) in
-  Data.cell_group wcount ~scale Observation.t obs
+  let min_max_distance =
+    S.Option.some (S.map Data.Settings.t_min_max_distance setts)
+  in
+  Data.cell_group wcount ~scale ~min_max_distance Observation.t obs
 
 let datatable obs ~enabled ~t ~contacts =
   let last_sel = ref None in (* Where is my fix point ?! *)

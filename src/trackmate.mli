@@ -7,9 +7,12 @@ open Gg
 
 (** Trackmate model.
 
-    https://github.com/trackmate-sc/TrackMate *)
+    [Parameter descriptions][pd]. Trackmate [repo][tm].
 
-(** {1:data_model Data model} *)
+    [pd]: https://imagej.net/imagej-wiki-static/TrackMate_Algorithms.html
+    [tm]: https://github.com/trackmate-sc/TrackMate *)
+
+(** # Data model *)
 
 module Int_set : Set.S with type elt = int
 module Int_map : Map.S with type key = int

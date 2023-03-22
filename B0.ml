@@ -123,6 +123,7 @@ let cell_gui =
   in
   let comp_mode = `Whole and source_map = None (* Some `Inline *) in
   let meta =
+    (* XXX I think should be no longer needed with jsoo 5. *)
     let comp = Cmd.(atom "--enable=use-js-string") in
     let link = comp in
     B0_jsoo.meta ~requires ~link ~comp ~comp_mode ~source_map ()

@@ -8,6 +8,7 @@ open Brr
 module Settings : sig
   type t
   val t_scale : t -> float
+  val t_min_max_distance : t -> float
   val contact_spec : t -> Cell.Contact.spec
   val input :
     obs:Observation.t option Note.signal ->
@@ -26,6 +27,7 @@ val input_obs :
 val cell_group :
   Work.Counter.t ->
   scale:float option Note.signal ->
+  min_max_distance:float option Note.signal ->
   ('a -> Trackmate.t option) ->
   'a option Note.signal -> Cell.Group.t option Note.signal
 

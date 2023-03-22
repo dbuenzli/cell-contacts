@@ -32,11 +32,16 @@ let blob_text ?progress b = match progress with
     fut
 
 module Settings = struct
-  type t = { t_scale : float; contact_spec : Cell.Contact.spec; }
+  type t =
+    { t_scale : float;
+      t_min_max_distance : float;
+      contact_spec : Cell.Contact.spec; }
 
   let t_scale s = s.t_scale
+  let t_min_max_distance s = s.t_min_max_distance
   let contact_spec s = s.contact_spec
-  let v t_scale contact_spec = { t_scale; contact_spec }
+  let v t_scale t_min_max_distance contact_spec =
+    { t_scale; t_min_max_distance; contact_spec }
 
   let scale ~enabled init =
     let min = 1. and max = 3. in
@@ -49,11 +54,45 @@ module Settings = struct
     Input.float ~enabled ~on_change:true
       ~label:(`Els label) ~text_size init ~min ~max ~step
 
+  let small_light txt =
+    (* XXX icon offset ! XXX negsp contrast *)
+    let style = At.style (Jstr.v "color: #555; margin-left:1.6rem") in
+    El.div ~at:[Negsp.Text.size `S; style] txt
+
+  let min_max_distance ~enabled ~obs init =
+    let min = 0. and max = 100. in
+    let init = if init < min then init else if init > max then max else init in
+    let unit = function
+    | None -> "μm"
+    | Some obs -> Observation.physical_unit obs
+    in
+    let label obs = [ Icon.trash (); El.txt' ("T dead limit " ^ unit obs)] in
+    let label = `Els (S.map label obs) in
+    let text_size = 4 in
+    let min = S.const min and max = S.const max and step = S.const 1. in
+    let txt =
+      let def = Jstr.v "https://imagej.net/imagej-wiki-static/\
+                        TrackMate_Algorithms.html#Max_distance_traveled."
+      in
+      let link =
+        let target = At.v (Jstr.v "target") (Jstr.v "_blank") in
+        El.a ~at:At.[target; href def; style (Jstr.v "color: #555")]
+          [El.txt' "maximal distance travelled"]
+      in
+      let txt = [El.txt' "Minimal "; link; El.txt' " for keeping a T cell." ] in
+      small_light txt
+    in
+    let s, el =
+      Input.float ~enabled ~on_change:true ~text_size ~label init ~min ~max
+        ~step
+    in
+    s, El.div [el; txt]
+
   let min_frames_count ~obs ~enabled init =
     let min = 2 and max = 100 in
     let init = if init < min then init else if init > max then max else init in
     let label =
-      `Els (S.const [Icon.clock (); El.txt' "Min. frames for contact"])
+      `Els (S.const [Icon.clock (); El.txt' "Min. frames for stable contact"])
     in
     let min = S.const min and max = S.const max in
     let affordance = `Text in
@@ -81,13 +120,7 @@ module Settings = struct
     let min = S.const min and max = S.const max in
     let overlap, el =
       Input.int ~enabled ~on_change:true ~text_size:3 ~label init ~min ~max in
-    let txt =
-      El.div ~at:[Negsp.Text.size `S;
-                  At.style (Jstr.v
-                              "color: #555; margin-left:1.6rem"
-                              (* XXX icon offset ! XXX negsp contrast *))]
-        [El.txt' "Percentage of the T cell area." ]
-    in
+    let txt = small_light [El.txt' "Percentage of the T cell area."] in
     overlap, El.div [el; txt]
 
   let set_int st k i =
@@ -109,14 +142,16 @@ module Settings = struct
   let load () =
     let st = Brr_io.Storage.local G.window in
     let t_scale = get_float st "t_scale" ~init:1.25 in
+    let t_min_max_distance = get_float st "t_min_max_distance" ~init:10. in
     let min_frame_count = get_int st "min_frame_count" ~init:2 in
     let min_overlap_pct = get_int st "min_overlap_pct" ~init:10 in
-    { t_scale;
+    { t_scale; t_min_max_distance;
       contact_spec = { Cell.Contact.min_frame_count; min_overlap_pct } }
 
   let save setts =
     let st = Brr_io.Storage.local G.window in
     let () = set_float st "t_scale" setts.t_scale in
+    let () = set_float st "t_min_max_distance" setts.t_min_max_distance in
     let () = set_int st "min_frame_count" setts.contact_spec.min_frame_count in
     let () = set_int st "min_overlap_pct" setts.contact_spec.min_overlap_pct in
     ()
@@ -124,23 +159,29 @@ module Settings = struct
   let input ~obs ~enabled =
     let init = load () in
     let t_scale, scale_el = scale ~enabled init.t_scale in
+    let t_min_max_distance, min_max_distance_el =
+      min_max_distance ~obs ~enabled init.t_min_max_distance
+    in
     let min_frame, min_frames_el =
       min_frames_count ~obs ~enabled init.contact_spec.min_frame_count
     in
     let min_overlap, min_overlap_el =
       min_t_overlap ~enabled init.contact_spec.min_overlap_pct
     in
-    let setts t_scale min_frame_count min_overlap_pct =
+    let setts t_scale t_min_max_distance min_frame_count min_overlap_pct =
       let setts =
-        { t_scale;
+        { t_scale; t_min_max_distance;
           contact_spec = { Cell.Contact.min_frame_count; min_overlap_pct } }
       in
       save setts; setts
     in
-    let setts = S.l3 setts t_scale min_frame min_overlap in
+    let setts =
+      S.app (S.l3 ~eq:( == ) setts t_scale t_min_max_distance min_frame)
+        min_overlap
+    in
     let at = Negsp.Layout.stack ~gap:(`Sp `XXS) () in
     setts,
-    El.div ~at [scale_el],
+    El.div ~at [scale_el; min_max_distance_el],
     El.div ~at [min_frames_el; min_overlap_el]
 end
 
@@ -239,27 +280,32 @@ let input_obs ~enabled ~work_counter:wcount =
 
 let timer tt = let tag = Jstr.v tt in Console.time tag; tag
 
-let make_group ?(log = fun err -> Console.(error [str err]) ) ?scale = function
-| None -> Fut.return None
-| Some tm ->
-    let tt = timer "Page: making group" in
-    let r = match Cell.Group.of_trackmate ?scale tm with
-    | Error e -> log e; None
-    | Ok g -> (Some g)
-    in
-    Console.time_end tt;
-    Fut.return r
+let make_group
+    ?(log = fun err -> Console.(error [str err])) ?scale ?min_max_distance =
+  function
+  | None -> Fut.return None
+  | Some tm ->
+      let tt = timer "Page: making group" in
+      let r = match Cell.Group.of_trackmate ?scale ?min_max_distance tm with
+      | Error e -> log e; None
+      | Ok g -> (Some g)
+      in
+      Console.time_end tt;
+      Fut.return r
 
-let cell_group wcount ~scale group obs =
-  let cells (o, scale) =
+let cell_group wcount ~scale ~min_max_distance group obs =
+  let t3 s0 s1 s2 = S.l3 (fun v0 v1 v2 -> (v0, v1, v2)) s0 s1 s2 in
+  let cells (o, scale, min_max_distance) =
     Work.Counter.incr wcount;
     let fut () =
-      let g = make_group ?scale (Option.join (Option.map group o)) in
+      let g =
+        make_group ?scale ?min_max_distance (Option.join (Option.map group o))
+      in
       Fut.map (fun v -> Work.Counter.decr wcount; v) g
     in
     None, fut
   in
-  Relax.S.patience_map ~init:None cells (S.Pair.v obs scale)
+  Relax.S.patience_map ~init:None cells (t3 obs scale min_max_distance)
 
 let intersect wcount t target =
   let intersect wcount (t, target) =
