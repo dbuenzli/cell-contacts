@@ -49,22 +49,27 @@ footer { color: #777 }
   overflow: auto }
 
 
-
 table { width: 100%; margin: 0;
         border-collapse: separate; border-spacing: 0; white-space: nowrap; }
 
 th { color: #333; font-weight: 600; text-align:left; position: sticky; top: 0;
-     background: var(--bg); padding: var(--datatable_cell_pad)}
+     background: var(--bg); padding: var(--datatable_cell_pad);
+     z-index: 3; }
 td { padding-inline: var(--datatable_cell_pad);
-     padding-blocke: var(--datatable_data_block_pad); }
+     padding-block: var(--datatable_data_block_pad);
+     z-index: 1; }
 
-td, th { border: 0px solid var(--datatable_sep); }
+td, th { border: 0px solid var(--datatable_sep) }
 td, th { border-inline-end-width: 1px; border-block-end-width: 1px; }
 td:last-child, th:last-child { border-inline-end-width: 0px }
 tbody tr:last-child td { border-block-end-width: 0px }
-td:first-child { color: #777 }
-tbody tr:hover { background: var(--datatable_hover); }
-.datatable .selected { background: var(--datatable_hover); }
+th:first-child, td:first-child
+{ background: var(--bg); position: sticky; left: 0; }
+th:first-child { z-index: 4; }
+td:first-child { color: #777; z-index: 2 }
+tbody tr:hover > * , .datatable .selected > *
+{ background: var(--datatable_hover); }
+
 tr:hover { cursor: pointer }
 
 /* Range */
