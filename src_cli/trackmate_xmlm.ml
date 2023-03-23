@@ -98,6 +98,9 @@ let track_of_el (_, atts) cs =
     let linearity_of_forward_progression =
       get_att float_of_string "LINEARITY_OF_FORWARD_PROGRESSION" m
     in
+    let mean_directional_change_rate =
+      get_att float_of_string "MEAN_DIRECTIONAL_CHANGE_RATE" m
+    in
     { Trackmate.tid; number_spots; number_gaps; number_splits; number_merges;
       number_complex; longest_gap; track_duration; track_start;
       track_stop; track_displacement; track_x_location;
@@ -105,7 +108,8 @@ let track_of_el (_, atts) cs =
       track_max_speed; track_min_speed; track_median_speed;
       track_std_speed; track_mean_quality; total_distance_traveled;
       max_distance_traveled; confinement_ratio;
-      mean_straight_line_speed; linearity_of_forward_progression; edges }
+      mean_straight_line_speed; mean_directional_change_rate;
+      linearity_of_forward_progression; edges }
   with
   | Failure e -> Fmt.failwith "Track tag: %s" e
 

@@ -136,6 +136,9 @@ let tracks d =
           let linearity_of_forward_progression =
             attf (Jstr.v "LINEARITY_OF_FORWARD_PROGRESSION") t
           in
+          let mean_directional_change_rate =
+            attf (Jstr.v "MEAN_DIRECTIONAL_CHANGE_RATE") t
+          in
           { Trackmate.tid; number_spots; number_gaps; number_splits;
             number_merges;
             number_complex; longest_gap; track_duration; track_start;
@@ -144,7 +147,8 @@ let tracks d =
             track_max_speed; track_min_speed; track_median_speed;
             track_std_speed; track_mean_quality; total_distance_traveled;
             max_distance_traveled; confinement_ratio;
-            mean_straight_line_speed; linearity_of_forward_progression; edges }
+            mean_straight_line_speed; linearity_of_forward_progression;
+            mean_directional_change_rate; edges }
         in
         acc := Trackmate.Int_map.add t.Trackmate.tid t !acc;
     with

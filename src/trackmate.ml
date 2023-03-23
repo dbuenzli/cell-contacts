@@ -50,6 +50,7 @@ type track =
     confinement_ratio : float;
     mean_straight_line_speed : float;
     linearity_of_forward_progression : float;
+    mean_directional_change_rate : float;
     edges : edge list; }
 
 type t =
