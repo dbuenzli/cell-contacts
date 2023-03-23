@@ -59,6 +59,12 @@ td { padding-inline: var(--datatable_cell_pad);
      padding-block: var(--datatable_data_block_pad);
      z-index: 1; }
 
+th > a { color: inherit; text-decoration:none; }
+th:hover > a { text-decoration: underline;
+               text-decoration-thickness: 0.04em;
+               text-decoration-skip-ink: all;
+               text-underline-offset: 3px; }
+
 td, th { border: 0px solid var(--datatable_sep) }
 td, th { border-inline-end-width: 1px; border-block-end-width: 1px; }
 td:last-child, th:last-child { border-inline-end-width: 0px }
