@@ -157,7 +157,9 @@ module Contact = struct
 
   type t =
     { target : Trackmate.track_id;
-      start_frame : int; overlaps : float Observation.frames; }
+      start_frame : int;
+      overlaps : float Observation.frames;
+      kind : [ `Stable | `Transient ] }
 
   let isect_area isect = (* FIXME Pgon2 *)
     let add c acc = Gg_kit.Pgon2.Contour.area c +. acc in
@@ -165,8 +167,11 @@ module Contact = struct
 
   let add_contact spec contacts target start_frame overlaps =
     let overlaps = Array.of_list (List.rev overlaps) in
-    if Array.length overlaps < spec.min_frame_count then () else
-    contacts := { target; start_frame; overlaps } :: !contacts
+    let kind =
+      if Array.length overlaps < spec.min_frame_count
+      then `Transient else `Stable
+    in
+    contacts := { target; start_frame; overlaps; kind } :: !contacts
 
   let find spec ~t ~target ~isects =
     let cell_contacts t target isects i =
@@ -183,39 +188,49 @@ module Contact = struct
         end
       in
       let stop_active_contacts () =
-      let stop target (start_frame, overlaps) =
-        add_contact spec contacts target start_frame overlaps
+        let stop target (start_frame, overlaps) =
+          add_contact spec contacts target start_frame overlaps
+        in
+        Imap.iter stop !active; active := Imap.empty;
       in
-      Imap.iter stop !active; active := Imap.empty;
-    in
-    let min_overlap_pct = float spec.min_overlap_pct /. 100. in
-    for f = 0 to frame_count - 1 do match cell.frames.(f) with
-    | None -> stop_active_contacts ();
-    | Some spot ->
-        let inv_cell_area = 1. /. spot.area in
-        for target = 0 to Array.length target - 1 do
-          match isects.(f).(i).(target) with
-          | None -> stop_if_exists target active
-          | Some isect ->
-              let pct = isect_area isect *. inv_cell_area in
-              if pct < min_overlap_pct then stop_if_exists target active else
-              begin
-                let update = function
-                | None -> Some (f, [pct])
-                | Some (frame, os) -> Some (frame, pct :: os)
-                in
-                active := Imap.update target update !active
-              end
-        done;
-    done;
-    stop_active_contacts ();
-    List.rev !contacts
+      let min_overlap_pct = float spec.min_overlap_pct /. 100. in
+      for f = 0 to frame_count - 1 do match cell.frames.(f) with
+      | None -> stop_active_contacts ();
+      | Some spot ->
+          let inv_cell_area = 1. /. spot.area in
+          for target = 0 to Array.length target - 1 do
+            match isects.(f).(i).(target) with
+            | None -> stop_if_exists target active
+            | Some isect ->
+                let pct = isect_area isect *. inv_cell_area in
+                if pct < min_overlap_pct then stop_if_exists target active else
+                begin
+                  let update = function
+                  | None -> Some (f, [pct])
+                  | Some (frame, os) -> Some (frame, pct :: os)
+                  in
+                  active := Imap.update target update !active
+                end
+          done;
+      done;
+      stop_active_contacts ();
+      List.rev !contacts
     in
     Array.init (Array.length t) (cell_contacts t target isects)
 
-  let count cs = List.length cs
-  let unique_count cs =
-    let add acc c = Trackmate.Int_set.add c.target acc in
+  let count_stable_transient cs =
+    let rec loop st tr = function
+    | c ::  cs ->
+        if c.kind = `Stable then loop (st + 1) tr cs else loop st (tr + 1) cs
+    | [] -> st, tr
+    in
+    loop 0 0 cs
+
+  let unique_stable_count cs =
+    let add acc c =
+      if c.kind = `Stable then Trackmate.Int_set.add c.target acc else
+      acc
+    in
     Trackmate.Int_set.cardinal (List.fold_left add Trackmate.Int_set.empty cs)
 
   type stats =
@@ -227,7 +242,7 @@ module Contact = struct
     let max_target_contacts = ref 0 in
     for i = 0 to Array.length cs - 1 do
       if cs.(i) <> [] then begin
-        let unique = unique_count cs.(i) in
+        let unique = unique_stable_count cs.(i) in
         incr num_contacting;
         max_target_contacts := Int.max !max_target_contacts unique
       end

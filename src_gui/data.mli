@@ -45,7 +45,6 @@ val contacts :
   'a option Note.signal ->
   Cell.Contact.t list Cell.Group.data option Note.signal
 
-
 val contact_stats :
   Cell.Contact.t list Cell.Group.data option Note.signal -> El.t
 

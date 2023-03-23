@@ -178,16 +178,24 @@ let id =
 let contacts =
   { name = "Contacts"; name_th = ""; href = None;
     enc = int_opt_enc;
-    get = (fun _ _ c -> Option.map Cell.Contact.count c); }
+    get = (fun _ _ c ->
+        Option.map (fun c -> fst (Cell.Contact.count_stable_transient c)) c); }
+
+let transient =
+  { name = "Transient"; name_th = ""; href = None;
+    enc = int_opt_enc;
+    get = (fun _ _ c ->
+        Option.map (fun c -> snd (Cell.Contact.count_stable_transient c)) c) }
 
 let targets_visited =
   { name = "Tgt visited"; name_th = ""; href = None;
     enc = int_opt_enc;
-    get = (fun _ _ c -> Option.map Cell.Contact.unique_count c) }
+    get = (fun _ _ c -> Option.map Cell.Contact.unique_stable_count c) }
 
 let cols =
   [ C id;
     C contacts;
+    C transient;
     C targets_visited;
     C track_start; C track_stop;
     C max_distance_traveled;

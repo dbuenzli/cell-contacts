@@ -83,7 +83,9 @@ val int :
          [Int.min_int] or [Int.max_int].}
       {- [enabled], indicates whether the input can be actuated,
          defaults to {!S.Bool.true'}.}
-      {- [label], a label for the input, if any.}} *)
+      {- [label], a label for the input, if any.}
+      {- [on_change] if [true], only update value when the user has
+         finished interacting with it. Defaults to [false].}} *)
 
 val float :
   ?on_change:bool ->
@@ -104,7 +106,10 @@ val float :
          {!Float.is_finite}.}
       {- [enabled], indicates whether the input can be actuated,
          defaults to {!S.Bool.true'}.}
-      {- [label], a label for the input, if any.}} *)
+      {- [label], a label for the input, if any.}
+      {- [on_change] if [true], only update value when the user has
+         finished interacting with it. Defaults to [false].}} *)
+
 
 (** {1:enums Enumerations} *)
 

@@ -70,15 +70,16 @@ module Contact : sig
   type t =
     { target : Trackmate.track_id;
       start_frame : int;
-      overlaps : float Observation.frames }
+      overlaps : float Observation.frames;
+      kind : [ `Stable | `Transient ] }
 
   val find :
     spec -> t:Group.t -> target:Group.t ->
     isects:Group.intersections -> t list Group.data
 
-  val count : t list -> int
-  val unique_count : t list -> int
+  val count_stable_transient : t list -> int * int
 
+  val unique_stable_count : t list -> int
 
   type stats =
     { num_contacting : int;

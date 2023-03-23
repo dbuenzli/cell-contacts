@@ -1,9 +1,9 @@
 
 
-* Contacts that are less than the minimal number of frames for stable
-  contact, but satisfy the minimal overlap for contact are now counted
-  under the 'Transient contacts' in the data table. They do not 
-  affect the Target visited metric.
+* Contacts that satisfy the minimal overlap but for a duration less
+  than the minimal number of frames for a stable contact are now
+  collected and reported in the 'Transient' column of the data.
+  These contacts do not affect the Targets visited metric.
 
 * Show all per cell (track) trackmate data in the user interface
   datatable in and in the CSV export. In the user interface column
@@ -23,10 +23,7 @@
   circle centered on the starting point of the cell that includes all
   its location over time.
   
-
 [maximal distance travelled]: https://imagej.net/imagej-wiki-static/TrackMate_Algorithms.html#Max_distance_traveled.
-
-  
 
 v0.0.3 2022-11-04
 -----------------
