@@ -84,20 +84,40 @@ let text ~size:s =
   let size s = At.style (Jstr.v (Printf.sprintf "width: %d.75ch" (s + 2))) in
   At.[type' (Jstr.v "number"); required; if_some (Option.map size s)]
 
+(* XXX Make {float,int}_input, start with an input we can set
+   the value *)
+
 let int_input ~on_change ?enabled ~min ~max ?step ~at init =
   let i = El.input ~at () in
   let some_int s = Some (Jstr.of_int s) in
-  let () = Elr.def_at (Jstr.v "min") (S.map some_int min) i in
-  let () = Elr.def_at (Jstr.v "max") (S.map some_int max) i in
+  let set_value i v =
+    El.set_prop El.Prop.value (Jstr.of_int v) i;
+    ignore (Ev.dispatch (Ev.create Ev.change) (El.as_target i))
+  in
+  let get_value i =
+    Option.value ~default:0 (Jstr.to_int (El.prop El.Prop.value i))
+  in
+  let () =
+    let set_min v =
+      El.set_prop (El.Prop.jstr (Jstr.v "min")) (Jstr.of_int v) i;
+      if get_value i < v then set_value i v;
+    in
+    Elr.hold_logr i (S.log ~now:true min set_min)
+  in
+  let () =
+    let set_max v =
+      El.set_prop (El.Prop.jstr (Jstr.v "max")) (Jstr.of_int v) i;
+      if get_value i > v then set_value i v;
+    in
+    Elr.hold_logr i (S.log ~now:true max set_max)
+  in
   let () = match step with
   | None -> El.set_at (Jstr.v "step") (Some (Jstr.v "1")) i
   | Some s -> Elr.def_at (Jstr.v "step") (S.map some_int s) i
   in
   let () = El.set_at At.Name.value (Some (Jstr.of_int init)) i in
   let () = set_enabled i ?enabled in
-  let get_value _ =
-    Option.value ~default:0 (Jstr.to_int (El.prop El.Prop.value i))
-  in
+  let get_value _ = get_value i in
   let act = Evr.on_el Ev.input get_value i in
   let chg = Evr.on_el Ev.change get_value i in
   act, chg, i
@@ -105,15 +125,32 @@ let int_input ~on_change ?enabled ~min ~max ?step ~at init =
 let float_input ~on_change ?enabled ~min ~max ?step ~at init =
   let i = El.input ~at () in
   let some_float s = Some (Jstr.of_float s) in
-  let () = Elr.def_at (Jstr.v "min") (S.map some_float min) i in
-  let () = Elr.def_at (Jstr.v "max") (S.map some_float max) i in
+  let set_value i v =
+    El.set_prop El.Prop.value (Jstr.of_float v) i;
+    ignore (Ev.dispatch (Ev.create Ev.change) (El.as_target i))
+  in
+  let get_value i = Jstr.to_float (El.prop El.Prop.value i) in
+  let () =
+    let set_min v =
+      El.set_prop (El.Prop.jstr (Jstr.v "min")) (Jstr.of_float v) i;
+      if get_value i < v then set_value i v;
+    in
+    Elr.hold_logr i (S.log ~now:true min set_min)
+  in
+  let () =
+    let set_max v =
+      El.set_prop (El.Prop.jstr (Jstr.v "max")) (Jstr.of_float v) i;
+      if get_value i > v then set_value i v;
+    in
+    Elr.hold_logr i (S.log ~now:true max set_max)
+  in
   let () = match step with
   | None -> El.set_at (Jstr.v "step") (Some (Jstr.v "any")) i
   | Some s -> Elr.def_at (Jstr.v "step") (S.map some_float s) i
   in
   let () = El.set_at At.Name.value (Some (Jstr.of_float init)) i in
   let () = set_enabled i ?enabled in
-  let get_value _ = Jstr.to_float (El.prop El.Prop.value i) in
+  let get_value _ = get_value i in
   let act = Evr.on_el Ev.input get_value i in
   let chg = Evr.on_el Ev.change get_value i in
   act, chg, i
@@ -134,7 +171,7 @@ let int
       (* Keep in sync *)
       let () = Elr.set_prop El.Prop.value ~on:(E.map Jstr.of_int a1) i0 in
       let () = Elr.set_prop El.Prop.value ~on:(E.map Jstr.of_int a0) i1 in
-      let e = if not on_change then a1 else E.select [c0; c1] in
+      let e = E.select (if on_change then [c0; c1] else [c0; c1; a1]) in
       let s = S.hold init e in
       s, make ?at ?label [i0; i1]
   | `Text ->
@@ -166,7 +203,7 @@ let float
       (* Keep in sync *)
       let () = Elr.set_prop El.Prop.value ~on:(E.map Jstr.of_float a1) i0 in
       let () = Elr.set_prop El.Prop.value ~on:(E.map Jstr.of_float a0) i1 in
-      let e = if not on_change then a1 else E.select [c0; c1] in
+      let e = E.select (if on_change then [c0; c1] else [c0; c1; a1]) in
       let s = S.hold init e in
       s, make ?at ?label [i0; i1]
   | `Text ->

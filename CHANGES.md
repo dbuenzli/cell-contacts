@@ -1,5 +1,7 @@
 
 
+* Fix a bug with the image frame ui. The text field was non-functional.
+
 * Contacts that satisfy the minimal overlap but for a duration less
   than the minimal number of frames for a stable contact are now
   collected and reported in the 'Transient' column of the data.
@@ -23,8 +25,8 @@
   circle centered on the starting point of the cell that includes all
   its location over time.
   
-[maximal distance travelled]: https://imagej.net/imagej-wiki-static/TrackMate_Algorithms.html#Max_distance_traveled.
-
+  [maximal distance travelled]: https://imagej.net/imagej-wiki-static/TrackMate_Algorithms.html#Max_distance_traveled.
+    
 v0.0.3 2022-11-04
 -----------------
 
