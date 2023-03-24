@@ -30,7 +30,9 @@ let spot_of_tm_spot ?(scale = 1.) (s : Trackmate.spot) =
   let c = List.map (add s.pos) s.contour in
   let c = Pgon2.Contour.of_seg_pts c in
   let pgon = Pgon2.v [c] in
-  { spot_id = s.sid; pos = s.pos; area = s.area; radius = s.radius; pgon }
+  let radius = scale *. s.radius in
+  let area = scale *. scale *. s.area in
+  { spot_id = s.sid; pos = s.pos; area; radius; pgon }
 
 type t =
   { track_id : Trackmate.track_id;

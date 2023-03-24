@@ -22,7 +22,7 @@ type spot =
   { sid : spot_id;
     frame : int;
     area : float;
-    pos : P2.t;
+    pos : P2.t; (** Origin is top left of the image, physical units. *)
     radius : float;
     contour : P2.t list }
 
@@ -65,8 +65,8 @@ type t =
     physical_unit : string;
     time_unit : string;
     image_file : string;
-    image_size : Size2.t;
-    pixel_size : Size2.t;
+    image_size : Size2.t; (** In pixels *)
+    pixel_size : Size2.t; (** Size of pixels in physical units. *)
     voxel_depth : float;
     nslices : int; (* ? *)
     nframes : int;
