@@ -1,6 +1,5 @@
-
-
-
+v0.0.4 2023-03-24
+-----------------
 
 * Allow to select cells in the graphical cell monitor by clicking
   on them.
@@ -8,7 +7,7 @@
 * Contacts that satisfy the minimal overlap but for a duration less
   than the minimal number of frames for a stable contact are now
   collected and reported in the 'Transient' column of the data.
-  These contacts do not affect the Targets visited metric.
+  These contacts do not affect the 'Targets visited' metric.
 
 * Show all per cell (track) trackmate data in the user interface
   datatable in and in the CSV export. In the user interface column
@@ -31,6 +30,9 @@
   
 * Fix a bug with the image frame ui. The text field was non-functional.
 
+* Fix a bug with the overlap computation: the spot areas of T cells was
+  not adjusted with (user definable) T cell scale factor.
+  
   
 v0.0.3 2022-11-04
 -----------------
