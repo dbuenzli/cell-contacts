@@ -297,38 +297,34 @@ let cell_group wcount ~scale ~min_max_distance group obs =
   let t3 s0 s1 s2 = S.l3 (fun v0 v1 v2 -> (v0, v1, v2)) s0 s1 s2 in
   let cells (o, scale, min_max_distance) =
     Work.Counter.incr wcount;
-    let fut () =
-      let g =
-        make_group ?scale ?min_max_distance (Option.join (Option.map group o))
-      in
-      Fut.map (fun v -> Work.Counter.decr wcount; v) g
+    let g =
+      make_group ?scale ?min_max_distance (Option.join (Option.map group o))
     in
-    None, fut
+    Fut.map (fun v -> Work.Counter.decr wcount; v) g
   in
-  Relax.S.patience_map ~init:None cells (t3 obs scale min_max_distance)
+  let filler = Fun.const None in
+  Relax.S.patience_map ~filler cells (t3 obs scale min_max_distance)
 
 let intersect wcount t target =
   let intersect wcount (t, target) =
     Work.Counter.incr wcount;
-    let fut = fun () ->
-      let tt = timer "Page: intersecting" in
-      let f = match t, target with
-      | Some t, Some target ->
-          let ret = function
-          | Ok (isect, _) -> Some isect
-          | Error e ->
-              (* FIXME show user or rather change isect interface *)
-              Console.(error [str "Isect error:"; str e]);
-              None
-          in
-          Fut.map ret (Work.send (Work.Cell_isect (t, target)))
-      | _ -> Fut.return None
-      in
-      Fut.map (fun r -> Work.Counter.decr wcount; Brr.Console.time_end tt;r) f
+    let tt = timer "Page: intersecting" in
+    let f = match t, target with
+    | Some t, Some target ->
+        let ret = function
+        | Ok (isect, _) -> Some isect
+        | Error e ->
+            (* FIXME show user or rather change isect interface *)
+            Console.(error [str "Isect error:"; str e]);
+            None
+        in
+        Fut.map ret (Work.send (Work.Cell_isect (t, target)))
+    | _ -> Fut.return None
     in
-    None, fut
+    Fut.map (fun r -> Work.Counter.decr wcount; Brr.Console.time_end tt;r) f
   in
-  Relax.S.patience_map ~init:None (intersect wcount) (S.Pair.v t target)
+  let filler = Fun.const None in
+  Relax.S.patience_map ~filler (intersect wcount) (S.Pair.v t target)
 
 (* Contacts *)
 

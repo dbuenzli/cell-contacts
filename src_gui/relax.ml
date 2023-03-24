@@ -24,20 +24,20 @@ module S = struct
   (* Would be nice to use (S.value s) for init but then the map
      is in a fut. *)
 
-  let map f s ~init =
-    let r, set_r = S.create init in
-    Logr.hold (S.log s (fun v -> ignore @@
-                         run' (fun () -> Fut.map set_r (f v))));
-    r
-
-  let patience_map f s ~init =
-    let r, set_r = S.create init in
-    let log v =
-      let patience, fut = f v in
-      set_r patience; ignore (Fut.map set_r (run' fut))
-    in
+  let map ?eq f s ~init =
+    let runner, set_run = S.create ?eq init in
+    let log v = ignore (run' (fun () -> Fut.map set_run (f v))) in
     Logr.hold (S.log s log);
-    r
+    runner
+
+  let patience_map ?eq ~filler f s =
+    let runner, send_run = Note.E.create () in
+    let log v = ignore (run' (fun () -> Fut.map send_run (f v))) in
+    Logr.hold (S.log ~now:true s log);
+    let fill = Note.E.map filler (S.changes s) in
+    let map = Note.E.select [fill; runner] in
+    let init = filler (S.value s) in
+    S.hold ?eq init map
 end
 
 (*---------------------------------------------------------------------------

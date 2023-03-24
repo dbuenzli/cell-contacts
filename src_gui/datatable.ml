@@ -261,8 +261,11 @@ let selected = Jstr.v "selected"
 let tr sel_el sel_i on_click tm g contacts i =
   let cell = g.(i) in
   let track =
-    Option.get @@
-    Trackmate.Int_map.find_opt cell.Cell.track_id tm.Trackmate.tracks_by_id
+    match
+      Trackmate.Int_map.find_opt cell.Cell.track_id tm.Trackmate.tracks_by_id
+    with
+    | None -> Console.(log ["PANIC! "; cell.Cell.track_id]); assert false
+    | Some t -> t
   in
   let contacts = Option.map (fun c -> c.(i)) contacts in
   let td cell track contacts (C c) =
