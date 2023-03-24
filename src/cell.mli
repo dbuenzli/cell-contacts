@@ -19,8 +19,11 @@ type spot =
     area : float;
     pgon : Pgon2.t }
 
+type id = Trackmate.track_id
+(** The type for cell identifiers. That is the track id used to derive it. *)
+
 type t =
-  { track_id : Trackmate.track_id; (** Track used to derive the cell. *)
+  { track_id : id; (** Track used to derive the cell. *)
     frames : spot option Observation.frames;
     (** Spot of the cell in each frame (if any). *) }
 

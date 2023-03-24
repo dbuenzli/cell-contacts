@@ -73,16 +73,16 @@ let group_frame g col ~sel frame =
     let o = I.const (Color.with_a col 1.0) and a = I.const col in
     cut_pgon ~w:(2. *. w) ~o p a
   in
-  let add_cell sel i acc c = match c.Cell.frames.(frame) with
+  let add_cell sel acc c = match c.Cell.frames.(frame) with
   | None -> acc
   | Some s ->
-      let col = if i = sel then sel_color else col in
+      let col = if c.track_id = sel then sel_color else col in
       I.blend (cut_pt ~w:1.5 s.pos Color.black) @@
       I.blend (cut_cell ~w:0.01 s.pgon col) @@
       acc
   in
   let sel = match sel with None -> -1 | Some i -> i in
-  fold_lefti (add_cell sel) I.void g
+  Array.fold_left (add_cell sel) I.void g
 
 let isect_frame isect col i =
   let cut_isect ~w p col =

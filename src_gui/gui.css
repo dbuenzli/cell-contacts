@@ -24,7 +24,7 @@ body { font-variant-numeric:var(--font_numeric_tabular)}
 body { max-inline-size: calc(1.75 * var(--measure_m));
        margin: auto; }
 
-canvas { box-sizing: content-box; }
+canvas { box-sizing: content-box; cursor: pointer; }
 .scale { position: relative; box-sizing:content-box; }
 .scale::before
 { content: ''; position: absolute; top: 0; left: 0;

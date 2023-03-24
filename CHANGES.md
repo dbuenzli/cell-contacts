@@ -1,6 +1,9 @@
 
 
-* Fix a bug with the image frame ui. The text field was non-functional.
+
+
+* Allow to select cells in the graphical cell monitor by clicking
+  on them.
 
 * Contacts that satisfy the minimal overlap but for a duration less
   than the minimal number of frames for a stable contact are now
@@ -13,20 +16,22 @@
   you click them.
 
   The column order can't be changed in the ui/csv but I can easily
-  tweak it in the code if you tell me what you prefer to see first.
+  tweak it in the code if you tell me what you think there may
+  be a more convenient one.
   
 * Add a T dead limit: a slider to determine a "minimal maximal distance 
   travelled" to take a T cell into consideration.
   
   The "minimal maximal distance traveled" formulation is bit long
-  winded but it indicates that we treshold the [maximal distance
-  travelled] trackmate data point. Trackmate could have used a less
+  winded but it indicates that we treshold the maximal distance
+  travelled trackmate data point. Trackmate could have used a less
   ambiguous vocabulary. Formally this is the radius of a bounding
   circle centered on the starting point of the cell that includes all
   its location over time.
   
-  [maximal distance travelled]: https://imagej.net/imagej-wiki-static/TrackMate_Algorithms.html#Max_distance_traveled.
-    
+* Fix a bug with the image frame ui. The text field was non-functional.
+
+  
 v0.0.3 2022-11-04
 -----------------
 

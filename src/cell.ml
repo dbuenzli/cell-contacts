@@ -34,8 +34,9 @@ let spot_of_tm_spot ?(scale = 1.) (s : Trackmate.spot) =
   let area = scale *. scale *. s.area in
   { spot_id = s.sid; pos = s.pos; area; radius; pgon }
 
+type id = Trackmate.track_id
 type t =
-  { track_id : Trackmate.track_id;
+  { track_id : id;
     frames : spot option Observation.frames; }
 
 let[@inline] check_spot_frame frames s =

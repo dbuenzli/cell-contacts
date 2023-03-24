@@ -258,7 +258,7 @@ let thead g cols =
 
 let selected = Jstr.v "selected"
 
-let tr sel_el sel_i on_click tm g contacts i =
+let tr sel_tr sel_id on_click tm g contacts i =
   let cell = g.(i) in
   let track =
     match
@@ -267,51 +267,78 @@ let tr sel_el sel_i on_click tm g contacts i =
     | None -> Console.(log ["PANIC! "; cell.Cell.track_id]); assert false
     | Some t -> t
   in
-  let contacts = Option.map (fun c -> c.(i)) contacts in
+  let contacts = match contacts with
+  | None -> None
+  | Some c ->
+      (* XXX I think we have a race again *)
+      if i > Array.length c - 1 then None else Some c.(i)
+  in
   let td cell track contacts (C c) =
     let v = c.get cell track contacts in
     c.enc.td v
   in
   let tr = El.tr (List.map (td cell track contacts) cols) in
-  ignore (Ev.listen Ev.click (on_click i) (El.as_target tr));
-  begin match sel_i with
-  | Some j when i = j -> El.set_class selected true tr; sel_el := Some tr
+  let id = cell.track_id in
+  ignore (Ev.listen Ev.click (on_click id) (El.as_target tr));
+  begin match sel_id with
+  | Some j when id = j -> El.set_class selected true tr; sel_tr := Some tr
   | _ -> ()
   end;
   tr
 
-let of_cell_group tm g ~contacts ~sel =
-  let sel_i = match sel with
+(* XXX the selection stuff is a mess redo ! In particular faster
+   lookup structures. *)
+
+let of_cell_group tm g ~contacts ~sel ~set_sel:set_sel_ev =
+  let has_id id c = c.Cell.track_id = id in
+  let sel_id = match sel with
   | None -> None
-  | Some i ->
-      match contacts with
-      | None -> None
-      | Some c ->
-          if i < 0 || i > Array.length c then None else Some i
+  | Some id -> if Array.exists (has_id id) g then Some id else None
   in
-  let sel, set_sel = Note.S.create sel_i in
-  let sel_el = ref None in
-  let on_click i ev =
-    let t = El.of_jv (Ev.target_to_jv (Ev.current_target ev)) in
-    match !sel_el with
-    | None ->
-        El.set_class selected true t; sel_el := Some t; set_sel (Some i)
-    | Some sel when sel == t -> ()
-    | Some sel ->
-        El.set_class selected false sel;
-        El.set_class selected true t;
-        sel_el := Some t; set_sel (Some i)
+  let sel, set_sel = Note.S.create sel_id in
+  let sel_tr = ref None in
+  let change_sel_row id tr = match !sel_tr with
+  | None ->
+      El.set_class selected true tr; sel_tr := Some tr; set_sel (Some id)
+  | Some sel when sel == tr -> ()
+  | Some sel ->
+      El.set_class selected false sel;
+      El.set_class selected true tr;
+      sel_tr := Some tr; set_sel (Some id)
+  in
+  let on_click id ev =
+    let tr = El.of_jv (Ev.target_to_jv (Ev.current_target ev)) in
+    change_sel_row id tr
   in
   let thead = thead g cols in
-  let tbody =
-    El.tbody (List.init (Array.length g)
-                (tr sel_el sel_i on_click tm g contacts))
-  in
+  let len = (Array.length g) in
+  let rows = Array.init len (tr sel_tr sel_id on_click tm g contacts) in
+  let tbody = El.tbody (Array.to_list rows) in
   let el =
     El.div
       ~at:At.[class' (Jstr.v "datatable"); Negsp.Text.size `S]
       [El.table [thead; tbody]]
   in
+  let () =
+    let do_set_sel id =
+      Console.(log ["select: "; id]);
+      let rec loop max i =
+        if i > max then () else
+        if not (has_id id g.(i)) then loop max (i + 1) else
+        let row = rows.(i) in
+        change_sel_row id row;
+        El.scroll_into_view ~align_v:`End row (* because of header *) ;
+      in
+      loop (Array.length g - 1) 0
+    in
+    Brr_note.Elr.may_hold_logr el (Note.E.log set_sel_ev do_set_sel)
+  in
+  begin match !sel_tr with
+  | None -> ()
+  | Some tr ->
+      ignore @@
+      (Relax.run @@ fun () -> El.scroll_into_view ~align_v:`End tr)
+  end;
   sel, el
 
 (*---------------------------------------------------------------------------

@@ -33,8 +33,8 @@ let monitor time obs ~t ~target ~isect ~sel =
   in
   let cells = S.Pair.v t target in
   let data =
-    S.Pair.v (S.map (Option.map Cell.Group.intersections_by_frames)
-                isect) sel
+    S.Pair.v (S.map (Option.map Cell.Group.intersections_by_frames) isect)
+      sel
   in
   S.l3 ~eq:(==) monitor time obs (S.Pair.v cells data)
 
@@ -124,10 +124,45 @@ let stats ~t ~target =
   in
   El.div ~at [t; target; isect; sel]
 
+
+let mouse_click e =
+  let mouse_to_pt e ev = (* N.B. y = 0 is on top *)
+    let ev = Ev.as_type ev in
+    let x = (Ev.Mouse.client_x ev) -. El.bound_x e in
+    let y = (Ev.Mouse.client_y ev) -. El.bound_y e in
+    let nx = x /. (El.bound_w e) in
+    let ny = y /. (El.bound_h e) in
+    P2.v nx ny
+  in
+  Evr.on_el Ev.mouseup (mouse_to_pt e) e
+
+let select (obs, frame, t) click = match Option.bind obs Observation.t with
+| None -> None
+| Some tm ->
+    match t with
+    | None -> None
+    | Some t ->
+        let click = V2.(mul tm.pixel_size (mul tm.image_size click)) in
+        let rec loop max i =
+          if i > max then None else
+          match t.(i).Cell.frames.(frame) with
+          | None -> loop max (i + 1)
+          | Some spot ->
+              let rsq = spot.radius *. spot.radius in
+              if V2.norm2 (V2.(spot.pos - click)) <= rsq
+              then Some t.(i).track_id else
+              loop max (i + 1)
+        in
+        loop (Array.length t - 1) 0
+
 let v obs ~t ~target ~isect ~sel =
   let frame, frame_el = frame_indicator obs in
   let monitor = monitor frame obs ~t ~target ~isect ~sel in
   let out = Output.image_view' monitor in
+  let click_sel =
+    let ss = S.l3 (fun x y z -> (x, y, z)) obs frame t in
+    S.sample_filter ss ~on:(mouse_click out) select
+  in
   let stats = stats ~t ~target in
   let box =
     let scale = scale obs in
@@ -139,9 +174,8 @@ let v obs ~t ~target ~isect ~sel =
     El.div ~at [out; scale]
   in
   let at = Negsp.Layout.stack () ~gap:(`Sp `XXS) in
-  frame, El.div ~at [box; stats; frame_el]
-
-
+  let st = El.div ~at [box; stats; frame_el] in
+  frame, click_sel, st
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2022 The cell programmers

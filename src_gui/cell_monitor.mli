@@ -3,13 +3,15 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
+type frame := int
 
 val v :
   Observation.t option Note.signal ->
   t:Cell.Group.t option Note.signal ->
   target:Cell.Group.t option Note.signal ->
   isect:Cell.Group.intersections option Note.signal ->
-  sel:int option Note.signal -> int Note.signal * Brr.El.t
+  sel:Cell.id option Note.signal ->
+  frame Note.signal * Cell.id Note.event * Brr.El.t
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2022 The cell programmers

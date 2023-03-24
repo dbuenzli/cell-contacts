@@ -11,7 +11,8 @@ val target_color : Color.t
 val isect_color : Color.t
 val sel_color : Color.t
 
-val group_frame : Cell.Group.t -> Color.t -> sel:int option -> int -> Vg.image
+val group_frame :
+  Cell.Group.t -> Color.t -> sel:Cell.id option -> int -> Vg.image
 
 val isect_frame :
   Gg_kit.Pgon2.t list array option -> Color.t -> int -> Vg.image

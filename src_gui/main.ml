@@ -20,18 +20,23 @@ let t_cells wcount obs setts =
   in
   Data.cell_group wcount ~scale ~min_max_distance Observation.t obs
 
-let datatable obs ~enabled ~t ~contacts =
-  let last_sel = ref None in (* Where is my fix point ?! *)
+let datatable obs ~enabled ~t ~contacts ~set_sel =
+  (* Where is my fix point ?! Also the selection stuff is a mess
+     hastily setup *)
+  let last_sel = ref None in
   let data obs t contacts = match obs, t with
-  | None, _ -> S.const None, [El.p [El.txt' "No observation loaded."]]
-  | _, None -> S.const None, [El.p [El.txt' "No T cell data in observation."]]
+  | None, _ ->
+      S.const !last_sel, [El.p [El.txt' "No observation loaded."]]
+  | _, None ->
+      S.const !last_sel, [El.p [El.txt' "No T cell data in observation."]]
   | Some obs, Some t ->
       match Observation.t obs with
-      | None (* racy on reload !? *) ->
-          Console.(log ["racy"]);
-          S.const None, [El.p []]
+      | None (* racy on reload !? XXX was like bad patience_map *) ->
+          Console.(log ["racy"]); S.const !last_sel, [El.p []]
       | Some tm ->
-          let sel, el = Datatable.of_cell_group tm t ~contacts ~sel:!last_sel in
+          let sel, el =
+            Datatable.of_cell_group tm t ~contacts ~sel:!last_sel ~set_sel
+          in
           sel, [Data.download_csv ~tm ~t ~contacts; el]
   in
   let div = El.div
@@ -65,8 +70,19 @@ let ui ~version =
   let (obs, target, t, isect, contacts, enabled), data_panel =
     src_data_panel ()
   in
-  let sel, datatable = datatable obs ~enabled ~t ~contacts in
-  let time, monitor_panel = Cell_monitor.v obs ~target ~t ~isect ~sel in
+  let datatable, monitor_panel =
+    let def sel =
+      let time, set_sel, monitor_panel =
+        Cell_monitor.v obs ~target ~t ~isect ~sel
+      in
+      let set_sel = Consoler.E.log ~obs:true "Set_sel" set_sel in
+      let sel', datatable = datatable obs ~enabled ~t ~contacts ~set_sel in
+      let sel' = S.map Fun.id sel' in
+      let () = Logr.hold (S.log sel' ignore) in
+      sel', (datatable, monitor_panel)
+    in
+    S.fix None def
+  in
   El.div ~at:(Negsp.Layout.stack ()) [
     El.div ~at:(Negsp.Layout.sidebar `Start ()) [data_panel; monitor_panel];
     El.h2 [El.txt' "T cells"];
