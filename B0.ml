@@ -170,7 +170,7 @@ let deploy =
   B0_cmdlet.v "deploy" ~doc:"Deploy to mount directory" @@ fun env args ->
   B0_cmdlet.exit_of_result @@
   let dir = Fpath.(B0_cmdlet.Env.scope_dir env // mount_dir) in
-  let mount_error = Error "No deploy directory use 'b0 cmd mount' first" in
+  let mount_error = Error "No deploy directory use 'b0 -- mount' first" in
   let* exists = Os.Dir.exists dir in
   if not exists then mount_error else
   let* is_mount = Os.Path.is_mount_point dir in
@@ -183,7 +183,11 @@ let deploy =
   let changes_md = Fpath.(B0_cmdlet.Env.scope_dir env / "CHANGES.md") in
   let cell_html = Fpath.(build / "cell_gui"/ "cell.html") in
   let copy f dir =
-    Os.File.copy ~force:true ~make_path:false ~src:f Fpath.(dir / basename f)
+    Os.Cmd.run Cmd.(atom "cp" %% path f %%path Fpath.(dir / basename f))
+(*
+    Os.File.copy
+      ~atomic:false (* This trips webdav *)
+      ~force:true ~make_path:false ~src:f Fpath.(dir / basename f) *)
   in
   let* () = copy protocol_md dir in
   let* () = copy protocol_html dir in
