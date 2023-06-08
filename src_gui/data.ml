@@ -88,6 +88,12 @@ module Settings = struct
     in
     s, El.div [el; txt]
 
+  let show_dur obs count = match obs with
+  | None -> ""
+  | Some o ->
+      let dur, unit = Observation.dur_of_frame_count o ~count in
+      Printf.sprintf "= %.1f%s" dur unit
+
   let min_frames_count ~obs ~enabled init =
     let min = 2 and max = 100 in
     let init = if init < min then init else if init > max then max else init in
@@ -100,14 +106,31 @@ module Settings = struct
       Input.int ~affordance ~enabled ~on_change:true ~text_size:3 ~label
         init ~min ~max;
     in
-    let dur obs count = match obs with
-    | None -> ""
-    | Some o ->
-        let dur, unit = Observation.dur_of_frame_count o ~count in
-        Printf.sprintf "= %.1f%s" dur unit
+    let at = Negsp.Layout.cluster ~gap:(`Sp `XXS) () in
+    count, El.div ~at [el; Output.span (S.l2 show_dur obs count)]
+
+  let allowed_overlap_gap_length ~obs ~enabled init =
+    let min = 0 and max = 20 in
+    let init = if init < min then init else if init > max then max else init in
+    let label =
+      `Els (S.const [Icon.cube_transparent ();
+                     El.txt' "Allowed overlap gap length"])
+    in
+    let min = S.const min and max = S.const max in
+    let affordance = `Text in
+    let count, el =
+      Input.int ~affordance ~enabled ~on_change:true ~text_size:3 ~label
+        init ~min ~max;
     in
     let at = Negsp.Layout.cluster ~gap:(`Sp `XXS) () in
-    count, El.div ~at [el; Output.span (S.l2 dur obs count)]
+    let txt =
+      let t =
+        "Keep contact open even if min. % overlap not met during that time."
+      in
+      small_light [El.txt' t]
+    in
+    count, El.div [El.div ~at [el; Output.span (S.l2 show_dur obs count)];
+                   txt]
 
   let min_t_overlap ~enabled init =
     let min = 0 and max = 100 in
@@ -144,15 +167,23 @@ module Settings = struct
     let t_scale = get_float st "t_scale" ~init:1.25 in
     let t_min_max_distance = get_float st "t_min_max_distance" ~init:10. in
     let min_frame_count = get_int st "min_frame_count" ~init:2 in
+    let allowed_overlap_gap_length =
+      get_int st "allowed_overlap_gap_length" ~init:0
+    in
     let min_overlap_pct = get_int st "min_overlap_pct" ~init:10 in
     { t_scale; t_min_max_distance;
-      contact_spec = { Cell.Contact.min_frame_count; min_overlap_pct } }
+      contact_spec = { Cell.Contact.min_frame_count;
+                       allowed_overlap_gap_length; min_overlap_pct } }
 
   let save setts =
     let st = Brr_io.Storage.local G.window in
     let () = set_float st "t_scale" setts.t_scale in
     let () = set_float st "t_min_max_distance" setts.t_min_max_distance in
     let () = set_int st "min_frame_count" setts.contact_spec.min_frame_count in
+    let () =
+      set_int st "allowed_overlap_gap_length"
+        setts.contact_spec.allowed_overlap_gap_length
+    in
     let () = set_int st "min_overlap_pct" setts.contact_spec.min_overlap_pct in
     ()
 
@@ -165,24 +196,35 @@ module Settings = struct
     let min_frame, min_frames_el =
       min_frames_count ~obs ~enabled init.contact_spec.min_frame_count
     in
+    let allowed_overlap_gap_length, allowed_overlap_gap_length_el =
+      allowed_overlap_gap_length
+        ~obs ~enabled init.contact_spec.allowed_overlap_gap_length
+    in
     let min_overlap, min_overlap_el =
       min_t_overlap ~enabled init.contact_spec.min_overlap_pct
     in
-    let setts t_scale t_min_max_distance min_frame_count min_overlap_pct =
-      let setts =
-        { t_scale; t_min_max_distance;
-          contact_spec = { Cell.Contact.min_frame_count; min_overlap_pct } }
+    let setts
+        t_scale t_min_max_distance min_frame_count allowed_overlap_gap_length
+        min_overlap_pct
+      =
+      let contact_spec =
+        { Cell.Contact.min_frame_count; allowed_overlap_gap_length;
+          min_overlap_pct }
       in
+      let setts = { t_scale; t_min_max_distance; contact_spec } in
       save setts; setts
     in
     let setts =
-      S.app (S.l3 ~eq:( == ) setts t_scale t_min_max_distance min_frame)
-        min_overlap
+      S.app (S.app ~eq:(==)
+               (S.l3 ~eq:(==) setts t_scale t_min_max_distance min_frame)
+               allowed_overlap_gap_length) min_overlap
     in
     let at = Negsp.Layout.stack ~gap:(`Sp `XXS) () in
     setts,
     El.div ~at [scale_el; min_max_distance_el],
-    El.div ~at [min_frames_el; min_overlap_el]
+    El.div ~at [ min_frames_el;
+                 min_overlap_el;
+                 allowed_overlap_gap_length_el; ]
 end
 
 module Load = struct

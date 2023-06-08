@@ -16,6 +16,7 @@ val arrow_path : unit -> El.t
 val database : unit -> El.t
 val document_arrow_down : unit -> El.t
 val clock : unit -> El.t
+val cube_transparent : unit -> El.t
 val square_2_stack : unit -> El.t
 
 val duplicate : unit -> El.t

@@ -156,6 +156,7 @@ module Imap = Map.Make (Int)
 module Contact = struct
   type spec =
     { min_frame_count : int;
+      allowed_overlap_gap_length : int;
       min_overlap_pct : int; }
 
   type t =
@@ -168,11 +169,11 @@ module Contact = struct
     let add c acc = Gg_kit.Pgon2.Contour.area c +. acc in
     (Gg_kit.Pgon2.fold_contours add isect 0.)
 
-  let add_contact spec contacts target start_frame overlaps =
+  let close_contact spec contacts target start_frame overlaps =
     let overlaps = Array.of_list (List.rev overlaps) in
-    let kind =
-      if Array.length overlaps < spec.min_frame_count
-      then `Transient else `Stable
+    let kind = match  Array.length overlaps < spec.min_frame_count with
+    | true -> `Transient
+    | false -> `Stable
     in
     contacts := { target; start_frame; overlaps; kind } :: !contacts
 
@@ -182,41 +183,47 @@ module Contact = struct
       let cell = t.(i) in
       let active = Stdlib.ref Imap.empty in
       let contacts = Stdlib.ref [] in
-      let stop_if_exists target active =
-        begin match Imap.find_opt target !active with
-        | None -> ()
-        | Some (start_frame, overlaps) ->
-            add_contact spec contacts target start_frame overlaps;
-            active := Imap.remove target !active
-        end
-      in
-      let stop_active_contacts () =
-        let stop target (start_frame, overlaps) =
-          add_contact spec contacts target start_frame overlaps
-        in
-        Imap.iter stop !active; active := Imap.empty;
+      let try_stop target = function
+      | None -> None
+      | Some (allowed_gap, start_frame, overlaps) ->
+          if allowed_gap = 0
+          then (close_contact spec contacts target start_frame overlaps; None)
+          else Some (allowed_gap - 1, start_frame, overlaps)
       in
       let min_overlap_pct = float spec.min_overlap_pct /. 100. in
       for f = 0 to frame_count - 1 do match cell.frames.(f) with
-      | None -> stop_active_contacts ();
+      | None ->
+          active := Imap.filter_map (fun k v -> try_stop k (Some v)) !active
       | Some spot ->
           let inv_cell_area = 1. /. spot.area in
           for target = 0 to Array.length target - 1 do
             match isects.(f).(i).(target) with
-            | None -> stop_if_exists target active
+            | None ->
+                active := Imap.update target (try_stop target) !active
             | Some isect ->
                 let pct = isect_area isect *. inv_cell_area in
-                if pct < min_overlap_pct then stop_if_exists target active else
-                begin
+                if pct < min_overlap_pct then
+                  active := Imap.update target (try_stop target) !active
+                else begin
                   let update = function
-                  | None -> Some (f, [pct])
-                  | Some (frame, os) -> Some (frame, pct :: os)
+                  | None -> Some (spec.allowed_overlap_gap_length, f, [pct])
+                  | Some (allowed_gap, frame, os) ->
+                      (* Add a 0% for the gaps (if any) and reset gap count. *)
+                      let dd = spec.allowed_overlap_gap_length - allowed_gap in
+                      let rec loop i os =
+                        if i > 0 then loop (i - 1) (0.0 :: os) else os
+                      in
+                      let allowed_gap = spec.allowed_overlap_gap_length in
+                      Some (allowed_gap, frame, pct :: loop dd os)
                   in
                   active := Imap.update target update !active
                 end
           done;
       done;
-      stop_active_contacts ();
+      let stop target (_, start_frame, overlaps) =
+        close_contact spec contacts target start_frame overlaps
+      in
+      Imap.iter stop !active; active := Imap.empty;
       List.rev !contacts
     in
     Array.init (Array.length t) (cell_contacts t target isects)

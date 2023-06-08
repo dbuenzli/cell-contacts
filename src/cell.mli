@@ -68,17 +68,19 @@ end
 module Contact : sig
   type spec =
     { min_frame_count : int;
+      allowed_overlap_gap_length : int;
       min_overlap_pct : int; }
 
   type t =
     { target : Trackmate.track_id;
       start_frame : int;
-      overlaps : float Observation.frames;
+      overlaps : float Observation.frames; (* Starting at [start_frame] *)
       kind : [ `Stable | `Transient ] }
 
   val find :
     spec -> t:Group.t -> target:Group.t ->
     isects:Group.intersections -> t list Group.data
+  (** Data grouped by t cell. *)
 
   val count_stable_transient : t list -> int * int
 

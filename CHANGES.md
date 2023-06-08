@@ -1,3 +1,10 @@
+
+
+
+* Add allowed overlap gap parameter. A number of frames during which
+  the contact will remain open even if the minimal percentage overlap
+  for contact is not met.
+  
 v0.0.4 2023-03-24
 -----------------
 
