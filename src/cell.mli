@@ -83,7 +83,6 @@ module Contact : sig
   (** Data grouped by t cell. *)
 
   val count_stable_transient : t list -> int * int
-
   val unique_stable_count : t list -> int
 
   type stats =
@@ -92,6 +91,29 @@ module Contact : sig
 
   val stats : t list Group.data -> stats
 end
+
+(** {1:speeds Computing speeds} *)
+
+val mean_speed : Trackmate.t -> t -> float
+(** [mean_speed tm c] is our own computation of the Mean sp. parameter
+    computed by trackmate. It should yield the same result.
+    [tm] is needed to get the time unit. *)
+
+val mean_speed_stable_contact :
+  Trackmate.t -> t -> Contact.t list -> float
+(** [mean_speed_stable_contact tm c] computes the mean speed during stable
+    contacts. *)
+
+val mean_speed_transient_contact :
+  Trackmate.t -> t -> Contact.t list -> float
+(** [mean_speed_stable_contact tm c] computes the mean speed during transient
+    contacts. *)
+
+val mean_speed_no_contact :
+  Trackmate.t -> t -> Contact.t list -> float
+(** [mean_speed_stable_contact tm c] computes the mean speed when there is
+    not contact. *)
+
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2022 The cell programmers

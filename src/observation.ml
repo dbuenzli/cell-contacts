@@ -9,7 +9,6 @@ open Gg_kit
 let is_t_filename = String.starts_with ~prefix:"t-"
 let is_target_filename = String.starts_with ~prefix:"target-"
 
-
 type t =
   { ref : Trackmate.t; (* At least one exists, this is it for the metadata. *)
     t : Trackmate.t option;

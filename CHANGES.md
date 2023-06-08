@@ -1,9 +1,15 @@
 
 
-
 * Add allowed overlap gap parameter. A number of frames during which
   the contact will remain open even if the minimal percentage overlap
   for contact is not met.
+  
+* Compute (link) mean speed velocities during stable, transient and no
+  contact frame ranges. This is respectively reported in the 'Mean
+  sp. stbl.', 'Mean sp. trnst.', 'Mean sp. no ctc.' columns.  If a
+  cell has no contact the latter should be equal (modulo a possible
+  numerical imprecision) to the 'Mean sp.' column which is the value
+  as computed by trackmate.
   
 v0.0.4 2023-03-24
 -----------------

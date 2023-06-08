@@ -22,6 +22,9 @@ type spot =
     area : float;
     pgon : Pgon2.t }
 
+let nil_spot = { spot_id = - 1; pos = P2.o; radius = 0.; area = 0.;
+                 pgon = Pgon2.empty }
+
 let spot_of_tm_spot ?(scale = 1.) (s : Trackmate.spot) =
   (* N.B. trackmate contour data is given relative to s.pos *)
   let add center pt =
@@ -165,6 +168,9 @@ module Contact = struct
       overlaps : float Observation.frames;
       kind : [ `Stable | `Transient ] }
 
+  let frame_range c =
+    (c.start_frame, c.start_frame + Array.length c.overlaps - 1)
+
   let isect_area isect = (* FIXME Pgon2 *)
     let add c acc = Gg_kit.Pgon2.Contour.area c +. acc in
     (Gg_kit.Pgon2.fold_contours add isect 0.)
@@ -260,6 +266,80 @@ module Contact = struct
     { num_contacting = !num_contacting;
       max_target_contacts = !max_target_contacts }
 end
+
+let[@inline] spot_link_velocity dt s0 s1 =
+  V2.norm (V2.(s1.pos - s0.pos)) /. dt
+
+let frame_range_mean_speed tm c ~first ~last =
+  let frame_dt = tm.Trackmate.time_interval in
+  let count = ref (-1) (* until we find the first spot *) in
+  let velocity_sum = ref 0. in
+  let dt = ref 0. in
+  let last_spot = ref nil_spot in
+  for i = first to last do match c.frames.(i) with
+  | None -> if !count <> -1 then dt := !dt +. frame_dt
+  | Some s ->
+      if !count = -1 then (last_spot := s; count := 0) else begin
+        dt := !dt +. frame_dt;
+        let v = spot_link_velocity !dt !last_spot s in
+        velocity_sum := !velocity_sum +. v;
+        incr count;
+        dt := 0.;
+        last_spot := s;
+      end
+  done;
+  if !count <= 0 then 0. else
+  !velocity_sum /. (float !count)
+
+let frame_ranges_mean_speed tm c rs =
+  let rec loop tm c count sum = function
+  | [] -> if count = 0 then 0. else (sum /. (float count))
+  | (first, last) :: rs ->
+      loop tm c (count + 1) (sum +. frame_range_mean_speed tm c ~first ~last) rs
+  in
+  loop tm c 0 0. rs
+
+let mean_speed tm c =
+  (* That's just to make sure we understood everything well. *)
+  frame_range_mean_speed tm c ~first:0 ~last:(Array.length c.frames - 1)
+
+let mean_speed_stable_contact tm cell cs =
+  let stable_ranges cs =
+    let add_range acc c = match c.Contact.kind with
+    | `Stable -> Contact.frame_range c :: acc  | `Transient -> acc
+    in
+    List.fold_left add_range [] cs
+  in
+  frame_ranges_mean_speed tm cell (stable_ranges cs)
+
+let mean_speed_transient_contact tm cell cs =
+  let transient_ranges cs =
+    let add_range acc c = match c.Contact.kind with
+    | `Stable -> acc  | `Transient -> Contact.frame_range c :: acc
+    in
+    List.fold_left add_range [] cs
+  in
+  frame_ranges_mean_speed tm cell (transient_ranges cs)
+
+let mean_speed_no_contact tm cell cs =
+  let cs =
+    (* Make sure they are in increasing frame order. *)
+    let compare c0 c1 =
+      Int.compare c0.Contact.start_frame c1.Contact.start_frame
+    in
+    List.sort compare cs
+  in
+  let last_frame = Array.length cell.frames - 1 in
+  let rec no_contact_ranges start rs = function
+  | [] -> if start < last_frame then (start, last_frame) :: rs else rs
+  | c :: cs ->
+      let first, last = Contact.frame_range c in
+      let before = first - 1 in
+      let rs = if before > start then (start, before) :: rs else rs in
+      no_contact_ranges (last + 1) rs cs
+  in
+  frame_ranges_mean_speed tm cell (no_contact_ranges 0 [] cs)
+
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2022 The cell programmers

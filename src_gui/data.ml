@@ -110,7 +110,7 @@ module Settings = struct
     count, El.div ~at [el; Output.span (S.l2 show_dur obs count)]
 
   let allowed_overlap_gap_length ~obs ~enabled init =
-    let min = 0 and max = 20 in
+    let min = 0 and max = 200 in
     let init = if init < min then init else if init > max then max else init in
     let label =
       `Els (S.const [Icon.cube_transparent ();
