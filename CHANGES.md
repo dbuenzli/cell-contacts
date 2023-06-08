@@ -1,4 +1,5 @@
-
+v0.0.5 2023-06-08
+-----------------
 
 * Add allowed overlap gap parameter. A number of frames during which
   the contact will remain open even if the minimal percentage overlap
