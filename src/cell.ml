@@ -6,14 +6,14 @@
 open Gg
 open Gg_kit
 
-let dump_contour =
+let dump_ring =
   let dump_pt ppf pt = Fmt.pf ppf "%h, %h" (V2.x pt) (V2.y pt) in
-  let iter_pts f c = Pgon2.Contour.fold_pts (fun pt () -> f pt; ()) c () in
+  let iter_pts f c = Ring2.fold_pts (fun pt () -> f pt; ()) c () in
   Fmt.brackets @@ Fmt.iter ~sep:Fmt.semi iter_pts dump_pt
 
 let dump_pgon =
-  let iter_contours f p = Pgon2.fold_contours (fun c () -> f c; ()) p () in
-  Fmt.brackets @@ Fmt.iter ~sep:Fmt.semi iter_contours dump_contour
+  let iter_contours f p = Pgon2.fold_rings (fun c () -> f c; ()) p () in
+  Fmt.brackets @@ Fmt.iter ~sep:Fmt.semi iter_contours dump_ring
 
 type spot =
   { spot_id : Trackmate.spot_id;
@@ -31,8 +31,8 @@ let spot_of_tm_spot ?(scale = 1.) (s : Trackmate.spot) =
     if scale = 1. then V2.add center pt else V2.add center (V2.smul scale pt)
   in
   let c = List.map (add s.pos) s.contour in
-  let c = Pgon2.Contour.of_seg_pts c in
-  let pgon = Pgon2.v [c] in
+  let c = Ring2.of_pts c in
+  let pgon = Pgon2.of_rings [c] in
   let radius = scale *. s.radius in
   let area = scale *. scale *. s.area in
   { spot_id = s.sid; pos = s.pos; area; radius; pgon }
@@ -172,8 +172,8 @@ module Contact = struct
     (c.start_frame, c.start_frame + Array.length c.overlaps - 1)
 
   let isect_area isect = (* FIXME Pgon2 *)
-    let add c acc = Gg_kit.Pgon2.Contour.area c +. acc in
-    (Gg_kit.Pgon2.fold_contours add isect 0.)
+    let add c acc = Gg_kit.Ring2.area c +. acc in
+    (Gg_kit.Pgon2.fold_rings add isect 0.)
 
   let close_contact spec contacts target start_frame overlaps =
     let overlaps = Array.of_list (List.rev overlaps) in
