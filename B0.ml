@@ -23,21 +23,21 @@ let cmdliner = B0_ocaml.libname "cmdliner"
 let show_uri_action f build u ~args =
   (* FIXME get that into b0 *)
   let open Result.Syntax in
-  Fut.return @@ Log.if_error ~use:B00_cli.Exit.some_error @@
+  Fut.return @@ Log.if_error ~use:B0_cli.Exit.some_error @@
   let url = Fpath.(B0_build.build_dir build u / f) in
   let background = true and prefix = true and
     url = Fmt.str "file://%s" (Fpath.to_string url)
   in
-  let* b = B00_www_browser.find ~browser:None () in
-  let* () = B00_www_browser.show ~background ~prefix b url in
-  Ok B00_cli.Exit.ok
+  let* b = B0_web_browser.find ~browser:None () in
+  let* () = B0_web_browser.show ~background ~prefix b url in
+  Ok B0_cli.Exit.ok
 
 let vcs_describe b =
   (* XXX memo ? *)
   let open Result.Syntax in
   let dir = B0_build.scope_dir b (B0_build.current b) in
-  let* vcs = B00_vcs.get () ~dir in
-  B00_vcs.describe vcs ~dirty_mark:true "HEAD"
+  let* vcs = B0_vcs.get () ~dir in
+  B0_vcs.describe vcs ~dirty_mark:true "HEAD"
 
 let favicon = Fpath.v "src_gui/assets/favicon.ico"
 let font = Fpath.v "src_gui/assets/Inter.var.woff2"
@@ -47,8 +47,8 @@ let linker = Fpath.v "src_gui/gui.html"
 
 let data_url b ~type' file = (* XXX add something like that to b0 *)
   let open Fut.Syntax in
-  let* favicon = B00.Memo.read (B0_build.memo b) file in
-  let b64 = B00_base64.encode favicon in
+  let* favicon = B0_memo.read (B0_build.memo b) file in
+  let b64 = B0_base64.encode favicon in
   Fut.return (String.concat "" ["data:"; type'; ";base64,"; b64])
 
 let build_cell_gui proc b =
@@ -63,14 +63,15 @@ let build_cell_gui proc b =
   let script = B0_build.in_build_dir b (Fpath.v "gui.js") in
   let app = B0_build.in_build_dir b (Fpath.v "cell.html") in
   let reads = [favicon; font; negsp_css; gui_css; linker; script] in
-  let version = vcs_describe b |> B00.Memo.fail_if_error m in
-  List.iter (B00.Memo.file_ready m) [favicon;font; gui_css; negsp_css;linker];
-  begin B00.Memo.write m ~reads ~stamp:version app @@ fun () ->
+  let version = vcs_describe b |> B0_memo.fail_if_error m in
+  List.iter
+    (B0_memo.file_ready m) [favicon;font; gui_css; negsp_css; linker];
+  begin B0_memo.write m ~reads ~stamp:version app @@ fun () ->
     Fut.sync @@
-    let* linker = B00.Memo.read m linker in
-    let* script = B00.Memo.read m script in
-    let* gui_css = B00.Memo.read m gui_css in
-    let* negsp_css = B00.Memo.read m negsp_css in
+    let* linker = B0_memo.read m linker in
+    let* script = B0_memo.read m script in
+    let* gui_css = B0_memo.read m gui_css in
+    let* negsp_css = B0_memo.read m negsp_css in
     let css = String.concat "\n" [negsp_css; gui_css] in
     let* font = data_url b ~type':"font/woff2" font in
     let font_var = function "FONT" -> Some font | _ -> None in
@@ -98,13 +99,13 @@ let protocol =
     let build = B0_build.current_build_dir b in
     let html = Fpath.(build / "PROTOCOL.html") in
     let hfrag = Fpath.(build / "PROTOCOL.hfrag") in
-    List.iter (B00.Memo.file_ready m) [md; md_html; md_css];
-    B00_cmark.cmd m ~opts:Cmd.(atom "--unsafe") ~mds:[md] ~o:hfrag;
-    begin B00.Memo.write m ~reads:[hfrag; md_html; md_css] html @@ fun () ->
+    List.iter (B0_memo.file_ready m) [md; md_html; md_css];
+    B0_cmark.cmd m ~opts:Cmd.(arg "--unsafe") ~mds:[md] ~o:hfrag;
+    begin B0_memo.write m ~reads:[hfrag; md_html; md_css] html @@ fun () ->
       Fut.sync @@
-      let* md_html = B00.Memo.read m md_html in
-      let* md_css = B00.Memo.read m md_css in
-      let* frag = B00.Memo.read m hfrag in
+      let* md_html = B0_memo.read m md_html in
+      let* md_css = B0_memo.read m md_css in
+      let* frag = B0_memo.read m hfrag in
       let vars = function
       | "BODY" -> Some frag | "CSS" -> Some md_css | _ -> None
       in
@@ -124,7 +125,7 @@ let cell_gui =
   let comp_mode = `Whole and source_map = None (* Some `Inline *) in
   let meta =
     (* XXX I think should be no longer needed with jsoo 5. *)
-    let comp = Cmd.(atom "--enable=use-js-string") in
+    let comp = Cmd.(arg "--enable=use-js-string") in
     let link = comp in
     B0_jsoo.meta ~requires ~link ~comp ~comp_mode ~source_map ()
   in
@@ -144,8 +145,8 @@ let mount =
   B0_cmdlet.v "mount" ~doc:"(Un)mount deploy directory" @@ fun env args ->
   let doc = "Unmount deploy directory." in
   let unmount = Cmdliner.Arg.(value & flag & info ["u"; "unmount"] ~doc) in
-  let mount u d = Os.Cmd.run Cmd.(atom "mount_webdav" % "-i" % u %% path d) in
-  let umount d = Os.Cmd.run Cmd.(atom "umount" %% path d) in
+  let mount u d = Os.Cmd.run Cmd.(arg "mount_webdav" % "-i" % u %% path d) in
+  let umount d = Os.Cmd.run Cmd.(arg "umount" %% path d) in
   let mount unmount =
     B0_cmdlet.exit_of_result @@
     let dir = Fpath.(B0_cmdlet.Env.scope_dir env // mount_dir) in
@@ -176,14 +177,14 @@ let deploy =
   let* is_mount = Os.Path.is_mount_point dir in
   if not is_mount then mount_error else
   let scope = B0_cmdlet.Env.scope_dir env in
-  let* () = Os.Cmd.run ~cwd:scope (Cmd.atom "b0") (* FIXME b0 *) in
+  let* () = Os.Cmd.run ~cwd:scope (Cmd.arg "b0") (* FIXME b0 *) in
   let build = Fpath.(B0_cmdlet.Env.b0_dir env / "b" / "user") in
   let protocol_md = Fpath.(B0_cmdlet.Env.scope_dir env / "PROTOCOL.md") in
   let protocol_html = Fpath.(build / "protocol" / "PROTOCOL.html") in
   let changes_md = Fpath.(B0_cmdlet.Env.scope_dir env / "CHANGES.md") in
   let cell_html = Fpath.(build / "cell_gui"/ "cell.html") in
   let copy f dir =
-    Os.Cmd.run Cmd.(atom "cp" %% path f %%path Fpath.(dir / basename f))
+    Os.Cmd.run Cmd.(arg "cp" %% path f %%path Fpath.(dir / basename f))
 (*
     Os.File.copy
       ~atomic:false (* This trips webdav *)
