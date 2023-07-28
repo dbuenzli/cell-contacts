@@ -10,10 +10,10 @@ let gg_kit = B0_ocaml.libname "gg.kit"
 let vg = B0_ocaml.libname "vg"
 let vg_pdf = B0_ocaml.libname "vg.pdf"
 let vg_htmlc = B0_ocaml.libname "vg.htmlc"
-let note = B0_ocaml.libname "note"
 let brr = B0_ocaml.libname "brr"
-let brr_note = B0_ocaml.libname "brr.note"
 let brr_poked = B0_ocaml.libname "brr.poked"
+let note = B0_ocaml.libname "note"
+let note_brr = B0_ocaml.libname "note.brr"
 let evidence = B0_ocaml.libname "vz.evidence"
 
 let cmdliner = B0_ocaml.libname "cmdliner"
@@ -120,7 +120,7 @@ let protocol =
 let cell_gui =
   let srcs = [`Dir (Fpath.v "src"); `Dir (Fpath.v "src_gui")] in
   let requires =
-    [fmt; gg; gg_kit; vg; vg_pdf; vg_htmlc; note; brr; brr_note; evidence]
+    [fmt; gg; gg_kit; vg; vg_pdf; vg_htmlc; brr; note; note_brr; evidence]
   in
   let comp_mode = `Whole and source_map = None (* Some `Inline *) in
   let meta =

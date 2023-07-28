@@ -397,7 +397,7 @@ let contact_stats contacts = (* FIXME Output.div *)
                          stats.Cell.Contact.max_target_contacts)]]
   in
   let div = El.div ~at:[At.style (Jstr.v "margin-top: var(--sp_s)")] [] in
-  let () = Brr_note.Elr.def_children div (S.map stats contacts) in
+  let () = Note_brr.Elr.def_children div (S.map stats contacts) in
   div
 
 let download_csv ~tm ~t ~contacts  =

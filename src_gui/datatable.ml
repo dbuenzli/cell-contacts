@@ -372,7 +372,7 @@ let of_cell_group tm g ~contacts ~sel ~set_sel:set_sel_ev =
       in
       loop (Array.length g - 1) 0
     in
-    Brr_note.Elr.may_hold_logr el (Note.E.log set_sel_ev do_set_sel)
+    Note_brr.Elr.may_hold_logr el (Note.E.log set_sel_ev do_set_sel)
   in
   begin match !sel_tr with
   | None -> ()

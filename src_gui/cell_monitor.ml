@@ -4,8 +4,8 @@
   ---------------------------------------------------------------------------*)
 
 open Brr
-open Brr_note
 open Note
+open Note_brr
 open Gg
 open Vg
 
