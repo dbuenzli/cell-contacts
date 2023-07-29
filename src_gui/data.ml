@@ -6,31 +6,6 @@
 open Brr
 open Note
 
-(* FIXME move that to Brr *)
-
-let progress_data e =
-  let e = Ev.to_jv e in
-  if not (Jv.Bool.get e "lengthComputable") then None else
-  let loaded = Jv.Float.get e "loaded" in
-  let total = Jv.Float.get e "total" in
-  Some (loaded, total)
-
-let blob_text ?progress b = match progress with
-| None -> Fut.of_promise ~ok:Jv.to_jstr (Jv.call (Blob.to_jv b) "text" [||])
-| Some progress ->
-    let reader = Jv.new' (Jv.get Jv.global "FileReader") [||] in
-    let fut, set_fut = Fut.create () in
-    let ok e =
-      (progress (progress_data e)); set_fut (Ok (Jv.Jstr.get reader "result"))
-    in
-    let error _e = set_fut (Error (Jv.to_error (Jv.get reader "error"))) in
-    let t = Ev.target_of_jv reader in
-    ignore (Ev.listen ~opts:(Ev.listen_opts ~once:true ()) Ev.load ok t);
-    ignore (Ev.listen ~opts:(Ev.listen_opts ~once:true ()) Ev.error error t);
-    ignore (Ev.listen Ev.progress (fun e -> progress (progress_data e)) t);
-    ignore (Jv.call reader "readAsText" [| Blob.to_jv b |]);
-    fut
-
 module Settings = struct
   type t =
     { t_scale : float;
@@ -267,7 +242,7 @@ module Load = struct
       Fut.map handle_error @@
       let blob = File.as_blob file in
       let progress p = notify (`Loading (kind, file, p)) in
-      let* xml = blob_text ~progress blob in
+      let* xml = Blob.text ~progress blob in
       let () = notify (`Parsing (kind, file)) in
       Relax.run' @@ fun () ->
       let r = match Trackmate_brr.of_jstr ~file:(File.name file) xml with
