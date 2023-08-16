@@ -138,7 +138,7 @@ let cell_exe =
   let requires = [b0_std; fmt; gg; gg_kit; vg; vg_pdf; cmdliner; xmlm] in
   B0_ocaml.exe "cell" ~srcs ~requires
 
-let mount_dir = Fpath.v "deploy"
+let mount_dir = Fpath.v "nosync/deploy"
 let webdav_url = "https://cloud.uni-konstanz.de/public.php/webdav"
 let mount =
   let open Result.Syntax in
