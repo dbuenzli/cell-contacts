@@ -383,9 +383,10 @@ let download_csv ~tm ~t ~contacts  =
     El.a ~at [El.label [Icon.document_arrow_down (); El.txt' ".csv file"]]
   in
   ignore (Ev.listen Ev.click (fun _ ->
-      El.set_prop (El.Prop.jstr (Jstr.v "href"))
-        Jstr.(v "data:text/csv;charset-utf-8," +
-              (Jstr.v (Datatable.to_csv tm t contacts))) el)
+      let data = Jstr.v (Datatable.to_csv tm t contacts) in
+      let data = Result.get_ok (Brr.Uri.encode_component data) in
+      let data_url = Jstr.(v "data:text/csv;charset-utf-8," + data) in
+      El.set_prop (El.Prop.jstr (Jstr.v "href")) data_url el;)
       (El.as_target el));
   el
 

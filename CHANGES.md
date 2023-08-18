@@ -1,3 +1,11 @@
+
+v0.0.6 2023-07-18
+-----------------
+
+* Fix CSV file download. The download data URL was not percent
+  encoded. This didn't bother chrome but it did bother firefox (in
+  its own right).
+
 v0.0.5 2023-06-08
 -----------------
 
