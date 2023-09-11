@@ -1,4 +1,5 @@
 open B0_kit.V000
+open Result.Syntax
 
 (* OCaml library names *)
 
@@ -20,7 +21,7 @@ let cmdliner = B0_ocaml.libname "cmdliner"
 
 (* let vz_doc = B0_ocaml.libname "vz.doc" *)
 
-let show_uri_action f build u ~args =
+let show_uri_action f build ?env ?cwd u ~args =
   (* FIXME get that into b0 *)
   let open Result.Syntax in
   Fut.return @@ Log.if_error ~use:B0_cli.Exit.some_error @@
@@ -36,8 +37,8 @@ let vcs_describe b =
   (* XXX memo ? *)
   let open Result.Syntax in
   let dir = B0_build.scope_dir b (B0_build.current b) in
-  let* vcs = B0_vcs.get () ~dir in
-  B0_vcs.describe vcs ~dirty_mark:true "HEAD"
+  let* vcs = B0_vcs_repo.get () ~dir in
+  B0_vcs_repo.describe vcs ~dirty_mark:true "HEAD"
 
 let favicon = Fpath.v "src_gui/assets/favicon.ico"
 let font = Fpath.v "src_gui/assets/Inter.var.woff2"
@@ -114,24 +115,32 @@ let protocol =
     end;
     Fut.return ()
   in
-  let action = show_uri_action "PROTOCOL.html" in
-  B0_unit.v "protocol" ~doc:"Description of the protocol" ~action exe_proc
+  let meta =
+    B0_meta.empty
+    |> B0_meta.add B0_unit.exec ("show-uri", show_uri_action "PROTOCOL.html")
+  in
+  B0_unit.make "protocol" ~doc:"Description of the protocol" ~meta exe_proc
 
 let cell_gui =
-  let srcs = [`Dir (Fpath.v "src"); `Dir (Fpath.v "src_gui")] in
+  let doc = "Cell app" in
+  let srcs = [`Dir ~/"src"; `Dir ~/"src_gui"] in
   let requires =
     [fmt; gg; gg_kit; vg; vg_pdf; vg_htmlc; brr; note; note_brr; evidence]
   in
-  let comp_mode = `Whole and source_map = None (* Some `Inline *) in
-  let meta =
+  let opts =
     (* XXX I think should be no longer needed with jsoo 5. *)
-    let comp = Cmd.(arg "--enable=use-js-string") in
-    let link = comp in
-    B0_jsoo.meta ~requires ~link ~comp ~comp_mode ~source_map ()
+    Cmd.(arg "--enable=use-js-string")
   in
-  let action = show_uri_action "cell.html" and wrap = build_cell_gui in
-  let doc = "Cell app" in
-  B0_jsoo.exe ~action ~wrap "gui.js" ~name:"cell_gui" ~doc ~srcs ~meta
+  let meta =
+    B0_meta.empty
+    |> B0_meta.add B0_jsoo.compilation_mode `Whole
+    |> B0_meta.add B0_jsoo.compile_opts opts
+    |> B0_meta.add B0_jsoo.link_opts opts
+    |> B0_meta.add B0_jsoo.source_map None (* Some `Inline) *)
+    |> B0_meta.add B0_unit.exec ("show-uri", show_uri_action "cell.html")
+  in
+  let wrap = build_cell_gui in
+  B0_jsoo.exe "gui.js" ~name:"cell_gui" ~requires ~meta ~srcs ~wrap ~doc
 
 let cell_exe =
   let srcs = [`Dir (Fpath.v "src"); `Dir_rec (Fpath.v "src_cli");] in
@@ -141,15 +150,15 @@ let cell_exe =
 let mount_dir = Fpath.v "nosync/deploy"
 let webdav_url = "https://cloud.uni-konstanz.de/public.php/webdav"
 let mount =
-  let open Result.Syntax in
-  B0_cmdlet.v "mount" ~doc:"(Un)mount deploy directory" @@ fun env args ->
+  B0_action.make "mount" ~doc:"(Un)mount deploy directory" @@
+  fun action env ~args ->
   let doc = "Unmount deploy directory." in
   let unmount = Cmdliner.Arg.(value & flag & info ["u"; "unmount"] ~doc) in
   let mount u d = Os.Cmd.run Cmd.(arg "mount_webdav" % "-i" % u %% path d) in
   let umount d = Os.Cmd.run Cmd.(arg "umount" %% path d) in
   let mount unmount =
-    B0_cmdlet.exit_of_result @@
-    let dir = Fpath.(B0_cmdlet.Env.scope_dir env // mount_dir) in
+    B0_action.exit_of_result @@
+    let dir = Fpath.(B0_env.scope_dir env // mount_dir) in
     match unmount with
     | true ->
         let* exists = Os.Dir.exists dir in
@@ -163,25 +172,24 @@ let mount =
         let* is_mount = Os.Path.is_mount_point dir in
         if is_mount then Ok () else mount webdav_url dir
   in
-  B0_cmdlet.eval env args Cmdliner.Term.(const mount $ unmount)
-
+  let term = Cmdliner.Term.(const mount $ unmount) in
+  B0_action.eval_cmdliner_term action env term ~args
 
 let deploy =
-  let open Result.Syntax in
-  B0_cmdlet.v "deploy" ~doc:"Deploy to mount directory" @@ fun env args ->
-  B0_cmdlet.exit_of_result @@
-  let dir = Fpath.(B0_cmdlet.Env.scope_dir env // mount_dir) in
+  B0_action.make' "deploy" ~doc:"Deploy to mount directory" @@
+  fun _ env ~args ->
+  let dir = Fpath.(B0_env.scope_dir env // mount_dir) in
   let mount_error = Error "No deploy directory use 'b0 -- mount' first" in
   let* exists = Os.Dir.exists dir in
   if not exists then mount_error else
   let* is_mount = Os.Path.is_mount_point dir in
   if not is_mount then mount_error else
-  let scope = B0_cmdlet.Env.scope_dir env in
+  let scope = B0_env.scope_dir env in
   let* () = Os.Cmd.run ~cwd:scope (Cmd.arg "b0") (* FIXME b0 *) in
-  let build = Fpath.(B0_cmdlet.Env.b0_dir env / "b" / "user") in
-  let protocol_md = Fpath.(B0_cmdlet.Env.scope_dir env / "PROTOCOL.md") in
+  let build = Fpath.(B0_env.b0_dir env / "b" / "user") in
+  let protocol_md = Fpath.(B0_env.scope_dir env / "PROTOCOL.md") in
   let protocol_html = Fpath.(build / "protocol" / "PROTOCOL.html") in
-  let changes_md = Fpath.(B0_cmdlet.Env.scope_dir env / "CHANGES.md") in
+  let changes_md = Fpath.(B0_env.scope_dir env / "CHANGES.md") in
   let cell_html = Fpath.(build / "cell_gui"/ "cell.html") in
   let copy f dir =
     Os.Cmd.run Cmd.(arg "cp" %% path f %%path Fpath.(dir / basename f))

@@ -340,7 +340,6 @@ let mean_speed_no_contact tm cell cs =
   in
   frame_ranges_mean_speed tm cell (no_contact_ranges 0 [] cs)
 
-
 (*---------------------------------------------------------------------------
    Copyright (c) 2022 The cell programmers
 
