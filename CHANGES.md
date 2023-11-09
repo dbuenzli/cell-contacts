@@ -1,9 +1,10 @@
-
+v0.0.7 2023-11-09
+-----------------
 
 * Fix mean speed interval computations. We were making means over
   each interval and then the mean of these means. That's not 
   the mean we are after. We now accumulate the speeds over each
-  interval to make the mean.
+  interval to make a single mean.
   
 
 v0.0.6 2023-07-18

@@ -181,7 +181,8 @@ let mount =
   B0_action.eval_cmdliner_term action env term ~args
 
 let deploy =
-  B0_action.make' "deploy" ~doc:"Deploy to mount directory" @@
+  let doc = "Build and deploy to mount directory" in
+  B0_action.make' "deploy" ~units:[cell_gui; protocol] ~doc @@
   fun _ env ~args ->
   let dir = Fpath.(B0_env.scope_dir env // mount_dir) in
   let mount_error = Error "No deploy directory use 'b0 -- mount' first" in
@@ -189,13 +190,10 @@ let deploy =
   if not exists then mount_error else
   let* is_mount = Os.Path.is_mount_point dir in
   if not is_mount then mount_error else
-  let scope = B0_env.scope_dir env in
-  let* () = Os.Cmd.run ~cwd:scope (Cmd.arg "b0") (* FIXME b0 *) in
-  let build = Fpath.(B0_env.b0_dir env / "b" / "user") in
-  let protocol_md = Fpath.(B0_env.scope_dir env / "PROTOCOL.md") in
-  let protocol_html = Fpath.(build / "protocol" / "PROTOCOL.html") in
-  let changes_md = Fpath.(B0_env.scope_dir env / "CHANGES.md") in
-  let cell_html = Fpath.(build / "cell_gui"/ "cell.html") in
+  let protocol_md = B0_env.in_scope_dir env ~/"PROTOCOL.md" in
+  let protocol_html = B0_env.in_unit_dir env protocol ~/"PROTOCOL.html" in
+  let changes_md = B0_env.in_scope_dir env ~/"CHANGES.md" in
+  let cell_html = B0_env.in_unit_dir env cell_gui ~/"cell.html" in
   let copy f dir =
     Os.Cmd.run Cmd.(arg "cp" %% path f %%path Fpath.(dir / basename f))
 (*
@@ -209,11 +207,8 @@ let deploy =
   let* () = copy cell_html dir in
   Ok ()
 
-
-
 (* Default pack *)
 
-(*
 let default =
-  B0_pack.v "default" ~locked:false ~doc:"Cell tracker app" [cell]
-*)
+  B0_pack.make "default" ~locked:false ~doc:"Cell tracker app" @@
+  B0_unit.list ()
