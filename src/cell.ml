@@ -304,13 +304,14 @@ let frame_ranges_mean_speed tm c rs =
   let rec loop tm c count sum = function
   | [] -> if count = 0 then 0. else (sum /. (float count))
   | (first, last) :: rs ->
+      if first = last then loop tm c count sum rs else
       loop tm c (count + 1) (sum +. frame_range_mean_speed tm c ~first ~last) rs
   in
   loop tm c 0 0. rs
 
 let mean_speed tm c =
   (* That's just to make sure we understood everything well. *)
-  frame_range_mean_speed tm c ~first:0 ~last:(Array.length c.frames - 1)
+  frame_ranges_mean_speed tm c [0, Array.length c.frames - 1]
 
 let mean_speed_stable_contact tm cell cs =
   let stable_ranges cs =
@@ -344,7 +345,7 @@ let mean_speed_no_contact tm cell cs =
   | c :: cs ->
       let first, last = Contact.frame_range c in
       let before = first - 1 in
-      let rs = if before > start then (start, before) :: rs else rs in
+      let rs = if before >= start then (start, before) :: rs else rs in
       no_contact_ranges (last + 1) rs cs
   in
   frame_ranges_mean_speed tm cell (no_contact_ranges 0 [] cs)

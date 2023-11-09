@@ -86,6 +86,7 @@ let debug dir id scale min_max_distance contact_spec =
          let tm_cms = track.Trackmate.track_mean_speed in
          let visited = Cell.Contact.unique_stable_count contacts in
          let ms_stbl = Cell.mean_speed_stable_contact tm c contacts in
+         let _ms_tr = Cell.mean_speed_transient_contact tm c contacts in
          let ms_no = Cell.mean_speed_no_contact tm c contacts in
          Printf.printf "%d visited:%d cms:%g %g stbl:%g no:%g\n"
            c.track_id visited cms tm_cms ms_stbl ms_no
