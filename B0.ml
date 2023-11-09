@@ -40,11 +40,11 @@ let vcs_describe b =
   let* vcs = B0_vcs_repo.get () ~dir in
   B0_vcs_repo.describe vcs ~dirty_mark:true "HEAD"
 
-let favicon = Fpath.v "src_gui/assets/favicon.ico"
-let font = Fpath.v "src_gui/assets/Inter.var.woff2"
-let negsp_css = Fpath.v "src_gui/negsp.css"
-let gui_css = Fpath.v "src_gui/gui.css"
-let linker = Fpath.v "src_gui/gui.html"
+let favicon = ~/"src/gui/assets/favicon.ico"
+let font = ~/"src/gui/assets/Inter.var.woff2"
+let negsp_css = ~/"src/gui/negsp.css"
+let gui_css = ~/"src/gui/gui.css"
+let linker = ~/"src/gui/gui.html"
 
 let data_url b ~type' file = (* XXX add something like that to b0 *)
   let open Fut.Syntax in
@@ -123,7 +123,7 @@ let protocol =
 
 let cell_gui =
   let doc = "Cell app" in
-  let srcs = [`Dir ~/"src"; `Dir ~/"src_gui"] in
+  let srcs = [`Dir ~/"src"; `Dir ~/"src/gui"] in
   let requires =
     [fmt; gg; gg_kit; vg; vg_pdf; vg_htmlc; brr; note; note_brr; evidence]
   in
@@ -143,7 +143,7 @@ let cell_gui =
   B0_jsoo.exe "gui.js" ~name:"cell_gui" ~requires ~meta ~srcs ~wrap ~doc
 
 let cell_exe =
-  let srcs = [`Dir (Fpath.v "src"); `Dir_rec (Fpath.v "src_cli");] in
+  let srcs = [`Dir ~/"src"; `Dir_rec ~/"src/cli";] in
   let requires = [b0_std; fmt; gg; gg_kit; vg; vg_pdf; cmdliner; xmlm] in
   B0_ocaml.exe "cell" ~srcs ~requires
 
