@@ -58,14 +58,43 @@ let data out_fmt dir outf no_isect scale min_max_distance =
       let* () = to_pdf ~dst obs target t isect in Ok 0
   | `Csv -> (failwith "TODO" : unit); Ok 0
 
-let debug dir scale min_max_distance contact_spec =
+let debug dir id scale min_max_distance contact_spec =
+  let iter_results tm cells contacts f =
+    for i = 0 to Array.length cells - 1 do
+      let cell = cells.(i) in
+      let track =
+        Option.get @@
+        Trackmate.Int_map.find_opt cell.Cell.track_id tm.Trackmate.tracks_by_id
+      in
+      let contacts = contacts.(i) in
+      f tm i cell track contacts
+    done
+  in
   Log.if_error ~use:1 @@
   let* dir = Fpath.of_string dir in
   let* obs = Cli_data.load_observation dir in
   match Observation.target obs, Observation.t obs with
-  | Some target, Some t ->
-      let* target = Cell.Group.of_trackmate target in
-      let* t = Cell.Group.of_trackmate ~scale ~min_max_distance t in
+  | Some target_tm, Some t_tm ->
+      let* target = Cell.Group.of_trackmate target_tm in
+      let* t = Cell.Group.of_trackmate ~scale ~min_max_distance t_tm in
+      let* isects, err = Cell.Group.intersections t target in
+      let contacts = Cell.Contact.find contact_spec ~t ~target ~isects in
+      if err <> 0 then Printf.eprintf "Isect errors: %d" err;
+      (iter_results t_tm t contacts @@ fun tm i c track contacts ->
+       let print_result tm i c track contacts =
+         let cms = Cell.mean_speed tm c in
+         let tm_cms = track.Trackmate.track_mean_speed in
+         let visited = Cell.Contact.unique_stable_count contacts in
+         let ms_stbl = Cell.mean_speed_stable_contact tm c contacts in
+         let ms_no = Cell.mean_speed_no_contact tm c contacts in
+         Printf.printf "%d visited:%d cms:%g %g stbl:%g no:%g\n"
+           c.track_id visited cms tm_cms ms_stbl ms_no
+       in
+       match id with
+       | None -> print_result tm i c track contacts
+       | Some id when c.track_id = id -> print_result tm i c track contacts
+       | Some _ -> ()
+      );
       Ok 0
   | _ -> Error "Could not find t-cells and target cells in observation."
 
@@ -138,8 +167,13 @@ let data =
           t_scale $ t_min_max_distance)
 
 let debug =
+  let t_cell_id =
+    let doc = "Cell id" in
+    Arg.(value & opt (some int) None & info ["id"] ~doc ~docv:"ID")
+  in
   Cmd.v (Cmd.info "debug")
-    Term.(const debug $ obs_dir $ t_scale $ t_min_max_distance $ contact_spec)
+    Term.(const debug $ obs_dir $ t_cell_id $
+          t_scale $ t_min_max_distance $ contact_spec)
 
 let cell =
   let doc = "Process trackmate cell data" in

@@ -245,7 +245,7 @@ module Contact = struct
 
   let count_stable_transient cs =
     let rec loop st tr = function
-    | c ::  cs ->
+    | c :: cs ->
         if c.kind = `Stable then loop (st + 1) tr cs else loop st (tr + 1) cs
     | [] -> st, tr
     in

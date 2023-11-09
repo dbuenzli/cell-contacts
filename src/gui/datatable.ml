@@ -204,7 +204,6 @@ let targets_visited =
     enc = int_opt_enc;
     get = (fun _ _ _ c -> Option.map Cell.Contact.unique_stable_count c) }
 
-
 let our_track_mean_speed =
   { name = "Mean sp. (ctrl)"; name_th = ""; href = None;
     enc = float_enc;
