@@ -145,7 +145,12 @@ let cell_gui =
 let cell_exe =
   let srcs = [`Dir ~/"src"; `Dir_rec ~/"src/cli";] in
   let requires = [b0_std; fmt; gg; gg_kit; vg; vg_pdf; cmdliner; xmlm] in
-  B0_ocaml.exe "cell" ~srcs ~requires
+  let meta =
+    (* FIXME b0: don't let jsoo builds downgrade everything to bytecode *)
+    B0_meta.empty
+    |> B0_meta.add B0_ocaml.Code.needs `Native
+  in
+  B0_ocaml.exe "cell" ~meta ~srcs ~requires
 
 let mount_dir = Fpath.v "nosync/deploy"
 let webdav_url = "https://cloud.uni-konstanz.de/public.php/webdav"

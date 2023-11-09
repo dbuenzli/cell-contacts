@@ -257,7 +257,7 @@ let cols =
     C track_mean_quality;
  ]
 
-let to_csv tm targets contacts =
+let to_csv tm cells contacts =
   let b = Buffer.create 5000 in
   let rec add_headers b = function
   | [] -> Buffer.add_string b "\r\n"
@@ -274,8 +274,8 @@ let to_csv tm targets contacts =
       add_row b tm cell track contacts cs
   in
   add_headers b cols;
-  for i = 0 to Array.length targets - 1 do
-    let cell = targets.(i) in
+  for i = 0 to Array.length cells - 1 do
+    let cell = cells.(i) in
     let track =
       Option.get @@
       Trackmate.Int_map.find_opt cell.Cell.track_id tm.Trackmate.tracks_by_id

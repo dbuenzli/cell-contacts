@@ -139,13 +139,22 @@ module Settings = struct
 
   let load () =
     let st = Brr_io.Storage.local G.window in
-    let t_scale = get_float st "t_scale" ~init:1.25 in
-    let t_min_max_distance = get_float st "t_min_max_distance" ~init:10. in
-    let min_frame_count = get_int st "min_frame_count" ~init:2 in
-    let allowed_overlap_gap_length =
-      get_int st "allowed_overlap_gap_length" ~init:0
+    let t_scale = get_float st "t_scale" ~init:Cell.Group.t_scale_default in
+    let t_min_max_distance =
+      get_float st "t_min_max_distance" ~init:Cell.Group.t_min_max_distance
     in
-    let min_overlap_pct = get_int st "min_overlap_pct" ~init:10 in
+    let min_frame_count =
+      get_int st "min_frame_count"
+        ~init:Cell.Contact.spec_default.min_frame_count
+    in
+    let allowed_overlap_gap_length =
+      get_int st "allowed_overlap_gap_length"
+        ~init:Cell.Contact.spec_default.allowed_overlap_gap_length
+    in
+    let min_overlap_pct =
+      get_int st "min_overlap_pct"
+        ~init:Cell.Contact.spec_default.min_overlap_pct
+    in
     { t_scale; t_min_max_distance;
       contact_spec = { Cell.Contact.min_frame_count;
                        allowed_overlap_gap_length; min_overlap_pct } }

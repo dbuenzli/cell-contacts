@@ -151,6 +151,10 @@ module Group = struct
       !acc
     in
     Array.init (Array.length isect) (frame_isect isect)
+
+
+  let t_scale_default = 1.25
+  let t_min_max_distance = 10.
 end
 
 
@@ -161,6 +165,11 @@ module Contact = struct
     { min_frame_count : int;
       allowed_overlap_gap_length : int;
       min_overlap_pct : int; }
+
+  let spec_default =
+    { min_frame_count = 2;
+      allowed_overlap_gap_length = 0;
+      min_overlap_pct = 10; }
 
   type t =
     { target : Trackmate.track_id;

@@ -61,6 +61,15 @@ module Group : sig
 
   val intersections_by_frames : intersections -> Pgon2.t list Observation.frames
   (** [intersection_by_frames] has the intersections per frame.  *)
+
+  (** {1:t_cell T cell defaults} *)
+
+  val t_scale_default : float
+  (** [t_scale_default] is the default scale value used for T cells. *)
+
+  val t_min_max_distance : float
+  (** [t_min_max_distance] is the default min_max_distance value used
+      for T cells. *)
 end
 
 (** {1:contact Contacts} *)
@@ -70,6 +79,9 @@ module Contact : sig
     { min_frame_count : int;
       allowed_overlap_gap_length : int;
       min_overlap_pct : int; }
+
+  val spec_default : spec
+  (** [spec_default] is the default contact specification. *)
 
   type t =
     { target : Trackmate.track_id;
