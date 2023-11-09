@@ -279,7 +279,8 @@ end
 let[@inline] spot_link_velocity dt s0 s1 =
   V2.norm (V2.(s1.pos - s0.pos)) /. dt
 
-let frame_range_mean_speed tm c ~first ~last =
+let frame_range_mean_speed_sum tm c ~first ~last =
+  if first = last then 0., 0 else
   let frame_dt = tm.Trackmate.time_interval in
   let count = ref (-1) (* until we find the first spot *) in
   let velocity_sum = ref 0. in
@@ -297,15 +298,14 @@ let frame_range_mean_speed tm c ~first ~last =
         last_spot := s;
       end
   done;
-  if !count <= 0 then 0. else
-  !velocity_sum /. (float !count)
+  !velocity_sum, (if !count < 0 then 0 else !count)
 
 let frame_ranges_mean_speed tm c rs =
   let rec loop tm c count sum = function
   | [] -> if count = 0 then 0. else (sum /. (float count))
   | (first, last) :: rs ->
-      if first = last then loop tm c count sum rs else
-      loop tm c (count + 1) (sum +. frame_range_mean_speed tm c ~first ~last) rs
+      let rsum, rcount = frame_range_mean_speed_sum tm c ~first ~last in
+      loop tm c (count + rcount) (sum +. rsum) rs
   in
   loop tm c 0 0. rs
 
