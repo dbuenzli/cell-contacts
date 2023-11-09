@@ -88,8 +88,10 @@ let debug dir id scale min_max_distance contact_spec =
          let ms_stbl = Cell.mean_speed_stable_contact tm c contacts in
          let _ms_tr = Cell.mean_speed_transient_contact tm c contacts in
          let ms_no = Cell.mean_speed_no_contact tm c contacts in
-         Printf.printf "%d visited:%d cms:%g %g stbl:%g no:%g\n"
-           c.track_id visited cms tm_cms ms_stbl ms_no
+         if ms_stbl <> 0. then
+           Printf.printf "%03d visited:%d cms:%.5f %.5f stbl:%.5f no:%.5f \
+                          strange:%b\n"
+             c.track_id visited cms tm_cms ms_stbl ms_no (ms_stbl > ms_no)
        in
        match id with
        | None -> print_result tm i c track contacts
