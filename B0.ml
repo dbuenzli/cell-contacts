@@ -13,6 +13,7 @@ let vg_pdf = B0_ocaml.libname "vg.pdf"
 let vg_htmlc = B0_ocaml.libname "vg.htmlc"
 let brr = B0_ocaml.libname "brr"
 let brr_poked = B0_ocaml.libname "brr.poked"
+let negsp_brr = B0_ocaml.libname "negsp.brr"
 let note = B0_ocaml.libname "note"
 let note_brr = B0_ocaml.libname "note.brr"
 let evidence = B0_ocaml.libname "vz.evidence"
@@ -111,7 +112,8 @@ let cell_gui =
   let doc = "Cell app" in
   let srcs = [`Dir ~/"src"; `Dir ~/"src/gui"] in
   let requires =
-    [fmt; gg; gg_kit; vg; vg_pdf; vg_htmlc; brr; note; note_brr; evidence]
+    [fmt; gg; gg_kit; vg; vg_pdf; vg_htmlc; brr; note; note_brr;
+     negsp_brr; evidence]
   in
   let opts =
     (* TODO I think should be no longer needed with jsoo 5. *)
