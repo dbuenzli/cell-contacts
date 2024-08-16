@@ -97,7 +97,6 @@ let int_input ~on_change ?enabled ~min ~max ?step ~at init =
   let get_value i =
     Option.value ~default:0 (Jstr.to_int (El.prop El.Prop.value i))
   in
-  let () = El.set_at At.Name.value (Some (Jstr.of_int init)) i in
   let () =
     let set_min v =
       El.set_prop (El.Prop.jstr (Jstr.v "min")) (Jstr.of_int v) i;
@@ -116,6 +115,7 @@ let int_input ~on_change ?enabled ~min ~max ?step ~at init =
   | None -> El.set_at (Jstr.v "step") (Some (Jstr.v "1")) i
   | Some s -> Elr.def_at (Jstr.v "step") (S.map some_int s) i
   in
+  let () = El.set_at At.Name.value (Some (Jstr.of_int init)) i in
   let () = set_enabled i ?enabled in
   let get_value _ = get_value i in
   let act = Evr.on_el Ev.input get_value i in
@@ -130,7 +130,6 @@ let float_input ~on_change ?enabled ~min ~max ?step ~at init =
     ignore (Ev.dispatch (Ev.create Ev.change) (El.as_target i))
   in
   let get_value i = Jstr.to_float (El.prop El.Prop.value i) in
-  let () = El.set_at At.Name.value (Some (Jstr.of_float init)) i in
   let () =
     let set_min v =
       El.set_prop (El.Prop.jstr (Jstr.v "min")) (Jstr.of_float v) i;
@@ -149,6 +148,7 @@ let float_input ~on_change ?enabled ~min ~max ?step ~at init =
   | None -> El.set_at (Jstr.v "step") (Some (Jstr.v "any")) i
   | Some s -> Elr.def_at (Jstr.v "step") (S.map some_float s) i
   in
+  let () = El.set_at At.Name.value (Some (Jstr.of_float init)) i in
   let () = set_enabled i ?enabled in
   let get_value _ = get_value i in
   let act = Evr.on_el Ev.input get_value i in
