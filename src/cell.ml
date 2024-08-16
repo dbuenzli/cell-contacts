@@ -181,7 +181,7 @@ module Contact = struct
     (c.start_frame, c.start_frame + Array.length c.overlaps - 1)
 
   let isect_area isect = (* FIXME Pgon2 *)
-    let add c acc = Gg_kit.Ring2.area c +. acc in
+    let add c acc = Float.abs (Gg_kit.Ring2.area c) +. acc in
     (Gg_kit.Pgon2.fold_rings add isect 0.)
 
   let close_contact spec contacts target start_frame overlaps =
