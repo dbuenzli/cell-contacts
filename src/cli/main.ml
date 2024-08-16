@@ -58,7 +58,7 @@ let data out_fmt dir outf no_isect scale min_max_distance =
       let* () = to_pdf ~dst obs target t isect in Ok 0
   | `Csv -> (failwith "TODO" : unit); Ok 0
 
-let debug dir id scale min_max_distance contact_spec =
+let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
   let iter_results tm cells contacts f =
     for i = 0 to Array.length cells - 1 do
       let cell = cells.(i) in
@@ -75,6 +75,11 @@ let debug dir id scale min_max_distance contact_spec =
   let* obs = Cli_data.load_observation dir in
   match Observation.target obs, Observation.t obs with
   | Some target_tm, Some t_tm ->
+      Printf.printf "scale: %f\n" scale;
+      Printf.printf "min-max-distance: %f\n" min_max_distance;
+      Printf.printf "min-frame-count: %d\n" contact_spec.min_frame_count;
+      Printf.printf "min-overlap: %d%%\n" contact_spec.min_overlap_pct;
+      Printf.printf "allowed-gap: %d\n" contact_spec.allowed_overlap_gap_length;
       let* target = Cell.Group.of_trackmate target_tm in
       let* t = Cell.Group.of_trackmate ~scale ~min_max_distance t_tm in
       let* isects, err = Cell.Group.intersections t target in
@@ -88,7 +93,7 @@ let debug dir id scale min_max_distance contact_spec =
          let ms_stbl = Cell.mean_speed_stable_contact tm c contacts in
          let _ms_tr = Cell.mean_speed_transient_contact tm c contacts in
          let ms_no = Cell.mean_speed_no_contact tm c contacts in
-         if ms_stbl <> 0. then
+    (*     if ms_stbl <> 0. then *)
            Printf.printf "%03d visited:%d cms:%.5f %.5f stbl:%.5f no:%.5f \
                           strange:%b\n"
              c.track_id visited cms tm_cms ms_stbl ms_no (ms_stbl > ms_no)
