@@ -66,7 +66,21 @@ let data
   | `Pdf ->
       let* () = to_pdf ~outf obs target t isect in
       Ok 0
-  | `Csv -> (failwith "TODO" : unit); Ok 0
+  | `Csv ->
+      let* t = match t with None -> Error "missing t-cells" | Some t -> Ok t in
+      let* target = match target with
+      | None -> Error "missing target cells" | Some target -> Ok target
+      in
+      let* isects = match isect with
+      | None -> Error "missing intersections"
+      | Some (isects, _errs) -> Ok isects
+      in
+      let contacts = Cell.Contact.find contact_spec ~t ~target ~isects in
+      let tm = Observation.t obs |> Option.get in
+      let res = Results.to_csv tm t (Some contacts) in
+      let* () = Os.File.write ~force:false ~make_path:true outf res in
+      Ok 0
+
 
 let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
   let iter_results tm cells contacts f =
@@ -163,7 +177,7 @@ let data =
     let doc =
       Fmt.str "Output format. Must be %s." (Arg.doc_alts_enum fmts)
     in
-    Arg.(value & opt (Arg.enum fmts) `Pdf &
+    Arg.(value & opt (Arg.enum fmts) `Csv &
          info ["f"; "output-format"] ~doc ~docv:"FMT")
   in
   let outf =

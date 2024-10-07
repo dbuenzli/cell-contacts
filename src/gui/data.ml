@@ -374,7 +374,6 @@ let contact_stats contacts = (* FIXME Output.div *)
         truncate (((float stats.Cell.Contact.num_contacting) /.
                    (float (Array.length cs))) *. 100.)
       in
-
       [ El.p [El.txt' (Printf.sprintf "%d (%d%%) T cells contact."
                          stats.Cell.Contact.num_contacting pct)];
         El.p [El.txt' (Printf.sprintf "Most active T cell visits %d targets."
@@ -392,7 +391,7 @@ let download_csv ~tm ~t ~contacts  =
     El.a ~at [El.label [Icon.document_arrow_down (); El.txt' ".csv file"]]
   in
   ignore (Ev.listen Ev.click (fun _ ->
-      let data = Jstr.v (Datatable.to_csv tm t contacts) in
+      let data = Jstr.v (Results.to_csv tm t contacts) in
       let data = Result.get_ok (Brr.Uri.encode_component data) in
       let data_url = Jstr.(v "data:text/csv;charset-utf-8," + data) in
       El.set_prop (El.Prop.jstr (Jstr.v "href")) data_url el;)

@@ -3,10 +3,6 @@
    SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
-val to_csv :
-  Trackmate.t -> Cell.Group.t ->
-  Cell.Contact.t list Cell.Group.data option -> string
-
 val of_cell_group :
   Trackmate.t -> Cell.Group.t ->
   contacts:Cell.Contact.t list Cell.Group.data option ->
