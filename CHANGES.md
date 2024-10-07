@@ -1,3 +1,11 @@
+
+
+
+* Change the defaults in the UI and on the command line to those given
+  by Vincent. Namely, T scale factor: 1.5, T dead limit 15, contact
+  min frames: 3, contact min overlap 10%, contact frame gap: 1.
+
+
 v0.0.7 2023-11-09
 -----------------
 

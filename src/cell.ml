@@ -153,8 +153,8 @@ module Group = struct
     Array.init (Array.length isect) (frame_isect isect)
 
 
-  let t_scale_default = 1.25
-  let t_min_max_distance = 10.
+  let t_scale_default = 1.5
+  let t_min_max_distance = 15.
 end
 
 
@@ -167,8 +167,8 @@ module Contact = struct
       min_overlap_pct : int; }
 
   let spec_default =
-    { min_frame_count = 2;
-      allowed_overlap_gap_length = 0;
+    { min_frame_count = 3;
+      allowed_overlap_gap_length = 1;
       min_overlap_pct = 10; }
 
   type t =
