@@ -1,10 +1,16 @@
 
 
 
-* Change the defaults in the UI and on the command line to those given
+
+
+* New file naming convention. Rather than having one directory per
+  observation we simply lookup for matching `$ID-t.xml` and
+  `$ID-target.xml` in a directory.  In the UI they must be picked
+  manually. We prefix the cell identifiers by `$ID` in the CSV files.
+* Allow to generate CSV files from the command line.
+* Change the blank defaults in the UI and on the command line to those given
   by Vincent. Namely, T scale factor: 1.5, T dead limit 15, contact
   min frames: 3, contact min overlap 10%, contact frame gap: 1.
-
 
 v0.0.7 2023-11-09
 -----------------

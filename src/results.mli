@@ -13,6 +13,7 @@ type 'a col =
     href : string option; (* Link to trackmate docs definition, if any. *)
     enc : 'a enc;
     get :
+      Observation.t ->
       Trackmate.t ->
       Cell.t -> Trackmate.track -> Cell.Contact.t list option -> 'a }
 
@@ -21,5 +22,6 @@ type ecol = C : 'a col -> ecol
 val cols : ecol list
 
 val to_csv :
-  Trackmate.t -> Cell.Group.t ->
-  Cell.Contact.t list Cell.Group.data option -> string
+  headers:bool ->
+  obs:Observation.t -> t:Cell.Group.t ->
+  contacts:Cell.Contact.t list Cell.Group.data option -> string

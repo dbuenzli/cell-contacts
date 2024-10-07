@@ -49,7 +49,7 @@ val contact_stats :
   Cell.Contact.t list Cell.Group.data option Note.signal -> El.t
 
 val download_csv :
-  tm:Trackmate.t ->
+  obs:Observation.t ->
   t:Cell.Group.t ->
   contacts:Cell.Contact.t list Cell.Group.data option ->
   Brr.El.t

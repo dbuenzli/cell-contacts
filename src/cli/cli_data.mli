@@ -5,4 +5,6 @@
 
 open B0_std
 
-val load_observation : Fpath.t -> (Observation.t, string) result
+
+
+val load_observations : Fpath.t -> (Observation.t list, string) result

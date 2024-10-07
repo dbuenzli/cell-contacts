@@ -6,20 +6,27 @@
 open Gg
 open Gg_kit
 
-let is_t_filename = String.starts_with ~prefix:"t-"
-let is_target_filename = String.starts_with ~prefix:"target-"
+let chop_suffix ~suffix s =
+  if not (String.ends_with ~suffix s) then None else
+  Some (String.sub s 0 (String.length s - String.length suffix))
+
+let t_suffix = "-t.xml"
+let target_suffix = "-target.xml"
+let is_t_filename = chop_suffix ~suffix:t_suffix
+let is_target_filename = chop_suffix ~suffix:target_suffix
 
 type t =
-  { ref : Trackmate.t; (* At least one exists, this is it for the metadata. *)
+  { id : string;
+    ref : Trackmate.t; (* At least one exists, this is it for the metadata. *)
     t : Trackmate.t option;
     target : Trackmate.t option; }
 
 let check mismatch g0 g1 = if g0 <> g1 then Fmt.str mismatch g0 g1 else ""
 
-let v ~t:t ~target:tgt = match t, tgt with
+let v ~id ~t:t ~target:tgt = match t, tgt with
 | None, None -> Error "No cell group provided"
-| Some t, None -> Ok { ref = t; t = Some t; target = None }
-| None, Some target -> Ok { ref = target; t = None; target = Some target }
+| Some t, None -> Ok { id; ref = t; t = Some t; target = None }
+| None, Some target -> Ok { id; ref = target; t = None; target = Some target }
 | Some (t : Trackmate.t), Some (target : Trackmate.t) ->
     let e =
       String.concat ""
@@ -35,8 +42,9 @@ let v ~t:t ~target:tgt = match t, tgt with
         ]
     in
     if e <> "" then Error e else
-    Ok { ref = t; t = Some t; target = Some target }
+    Ok { id; ref = t; t = Some t; target = Some target }
 
+let id o = o.id
 let ref o = o.ref
 let t o = o.t
 let target o = o.target

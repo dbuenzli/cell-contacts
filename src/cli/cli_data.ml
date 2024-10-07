@@ -8,15 +8,39 @@ open Result.Syntax
 
 let time fm f = Log.time ~level:Log.Info fm f
 
-let find_observation_files dir =
-  let find _ fname file (t, target as acc) =
-    if not (Fpath.has_ext ".xml" file) then acc else
-    let fname = String.Ascii.lowercase fname in
-    if Observation.is_t_filename fname then (Some file, target) else
-    if Observation.is_target_filename fname then (t, Some file) else
-    acc
+
+type pair = { t : Fpath.t option; target : Fpath.t option }
+
+let add_t id file m =
+  let upd = function
+  | None -> Some { t = Some file; target = None }
+  | Some p -> Some { p with t = Some file }
   in
-  Os.Dir.fold_files ~recurse:false find dir (None, None)
+  String.Map.update id upd m
+
+let add_target id file m =
+  let upd = function
+  | None -> Some { t = None; target = Some file }
+  | Some p -> Some { p with target = Some file }
+  in
+  String.Map.update id upd m
+
+let find_observations files =
+  let find acc file =
+    if not (Fpath.has_ext ".xml" file) then acc else
+    let fname = Fpath.basename file in
+    match Observation.is_t_filename fname with
+    | Some id -> add_t id file acc
+    | None ->
+        match Observation.is_target_filename fname with
+        | Some id -> add_target id file acc
+        | None -> acc
+  in
+  List.fold_left find String.Map.empty files
+
+let find_observations_in_dir dir =
+  let* files = Os.Dir.fold_files ~recurse:false Os.Dir.path_list dir [] in
+  Ok (find_observations files)
 
 let read_trackmate ~kind file =
   time (fun r m -> match r with
@@ -27,8 +51,17 @@ let read_trackmate ~kind file =
   | Some file ->
       Result.map Option.some @@ Trackmate_xmlm.of_file (Fpath.to_string file)
 
-let load_observation dir =
-  let* t, target = find_observation_files dir in
-  let* t = read_trackmate ~kind:"T" t in
-  let* target = read_trackmate ~kind:"target" target in
-  Observation.v ~t ~target
+let load_observations dir =
+  try
+    let* m = find_observations_in_dir dir in
+    let add id { t; target } acc  =
+      let o =
+        Result.error_to_failure @@
+        let* t = read_trackmate ~kind:"T" t in
+        let* target = read_trackmate ~kind:"target" target in
+        Observation.v ~id ~t ~target
+      in
+      o :: acc
+    in
+    Ok (String.Map.fold add m [])
+  with Failure e -> Error e

@@ -23,7 +23,7 @@ let thead g cols =
 
 let selected = Jstr.v "selected"
 
-let tr sel_tr sel_id on_click tm g contacts i =
+let tr obs sel_tr sel_id on_click tm g contacts i =
   let cell = g.(i) in
   let track =
     match
@@ -39,7 +39,7 @@ let tr sel_tr sel_id on_click tm g contacts i =
       if i > Array.length c - 1 then None else Some c.(i)
   in
   let td cell track contacts (C c) =
-    let v = c.get tm cell track contacts in
+    let v = c.get obs tm cell track contacts in
     enc_td (Jstr.of_string (c.enc.td v))
   in
   let tr = El.tr (List.map (td cell track contacts) cols) in
@@ -54,7 +54,8 @@ let tr sel_tr sel_id on_click tm g contacts i =
 (* XXX the selection stuff is a mess redo ! In particular faster
    lookup structures. *)
 
-let of_cell_group tm g ~contacts ~sel ~set_sel:set_sel_ev =
+let of_cell_group obs g ~contacts ~sel ~set_sel:set_sel_ev =
+  let tm = Observation.t obs |> Option.get in
   let has_id id c = c.Cell.track_id = id in
   let sel_id = match sel with
   | None -> None
@@ -77,7 +78,7 @@ let of_cell_group tm g ~contacts ~sel ~set_sel:set_sel_ev =
   in
   let thead = thead g cols in
   let len = (Array.length g) in
-  let rows = Array.init len (tr sel_tr sel_id on_click tm g contacts) in
+  let rows = Array.init len (tr obs sel_tr sel_id on_click tm g contacts) in
   let tbody = El.tbody (Array.to_list rows) in
   let el =
     El.div

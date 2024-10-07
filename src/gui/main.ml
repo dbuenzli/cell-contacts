@@ -33,11 +33,11 @@ let datatable obs ~enabled ~t ~contacts ~set_sel =
       match Observation.t obs with
       | None (* racy on reload !? XXX was like bad patience_map *) ->
           Console.(log ["racy"]); S.const !last_sel, [El.p []]
-      | Some tm ->
+      | Some _tm ->
           let sel, el =
-            Datatable.of_cell_group tm t ~contacts ~sel:!last_sel ~set_sel
+            Datatable.of_cell_group obs t ~contacts ~sel:!last_sel ~set_sel
           in
-          sel, [Data.download_csv ~tm ~t ~contacts; el]
+          sel, [Data.download_csv ~obs ~t ~contacts; el]
   in
   let div = El.div
       ~at:((* At.style (Jstr.v "align-items: end") :: *)

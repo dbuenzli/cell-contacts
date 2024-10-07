@@ -32,7 +32,7 @@ let intersections no_isect obs ~t_scale ~t_min_max_distance =
             let errs = match r with
             | Ok None -> 0 | Ok (Some (_, e)) -> e | Error _ -> 1
             in
-            m "Intersected groups (%d errors)" errs)
+            m "Intersected groups %s (%d errors)" (Observation.id obs) errs )
           (fun () ->
              (Result.map Option.some (Cell.Group.intersections t target)))
     | _ -> Ok None
@@ -58,26 +58,51 @@ let data
   =
   Log.if_error ~use:1 @@
   let* dir = Fpath.of_string obs_dir in
-  let* obs = Cli_data.load_observation dir in
-  let* t, target, isect =
-    intersections no_isect obs ~t_scale ~t_min_max_distance
-  in
+  let* obss = Cli_data.load_observations dir in
   match out_fmt with
   | `Pdf ->
-      let* () = to_pdf ~outf obs target t isect in
-      Ok 0
+      (* XXX we no longer have the time to something smart here. Just take the
+         first observation. *)
+      begin match obss with
+      | [] -> Error "No observation found"
+      | obs :: obss ->
+          if obss <> [] then Log.warn begin
+              fun m -> m "Multiple observations only rendering the first one"
+            end;
+          let* t, target, isect =
+            intersections no_isect obs ~t_scale ~t_min_max_distance
+          in
+          let* () = to_pdf ~outf obs target t isect in
+          Ok 0
+      end
   | `Csv ->
-      let* t = match t with None -> Error "missing t-cells" | Some t -> Ok t in
-      let* target = match target with
-      | None -> Error "missing target cells" | Some target -> Ok target
+      let rec add_obs ~headers acc = function
+      | [] -> acc
+      | obs :: obss ->
+          let res =
+            Result.error_to_failure @@
+            let* t, target, isect =
+              intersections no_isect obs ~t_scale ~t_min_max_distance
+            in
+            let* t = match t with
+            | None -> Error "missing t-cells" | Some t -> Ok t
+            in
+            let* target = match target with
+            | None -> Error "missing target cells" | Some target -> Ok target
+            in
+            let* isects = match isect with
+            | None -> Error "missing intersections"
+            | Some (isects, _errs) -> Ok isects
+            in
+            let contacts = Cell.Contact.find contact_spec ~t ~target ~isects in
+            Ok (Results.to_csv ~headers ~obs ~t ~contacts:(Some contacts))
+          in
+          add_obs ~headers:false (res :: acc) obss
       in
-      let* isects = match isect with
-      | None -> Error "missing intersections"
-      | Some (isects, _errs) -> Ok isects
+      let* res = try Ok (add_obs ~headers:true [] obss) with
+      | Failure e -> Error e
       in
-      let contacts = Cell.Contact.find contact_spec ~t ~target ~isects in
-      let tm = Observation.t obs |> Option.get in
-      let res = Results.to_csv tm t (Some contacts) in
+      let res = String.concat "" (List.rev res) in
       let* () = Os.File.write ~force:false ~make_path:true outf res in
       Ok 0
 
@@ -96,7 +121,8 @@ let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
   in
   Log.if_error ~use:1 @@
   let* dir = Fpath.of_string dir in
-  let* obs = Cli_data.load_observation dir in
+  let* obss = Cli_data.load_observations dir in
+  let obs = List.hd obss in
   match Observation.target obs, Observation.t obs with
   | Some target_tm, Some t_tm ->
       Printf.printf "scale: %f\n" scale;

@@ -228,14 +228,14 @@ module Load = struct
   | `Obs _ -> Fmt.str "Observation loaded."
 
   let find_observation_files files =
-    let find (t, target as acc) file =
+    let find (id, t, target as acc) file =
       let name = File.name file in
       if not (Jstr.ends_with ~suffix:(Jstr.v ".xml") name) then acc else
       let name = Jstr.to_string (Jstr.lowercased name) in
-      if Observation.is_t_filename name then (Some file, target) else
-      if Observation.is_target_filename name then (t, Some file) else acc
+      if Observation.is_t_filename name then (id, Some file, target) else
+      if Observation.is_target_filename name then (id, t, Some file) else acc
     in
-    List.fold_left find (None, None) files
+    List.fold_left find ("", None, None) files
 
   let trackmate_data wcount kind notify = function
   | None -> Fut.return None
@@ -266,13 +266,12 @@ module Load = struct
 
   let observation wcount notify files =
     ignore @@ Fut.map notify @@ match find_observation_files files with
-    | None, None -> Fut.return (`No_data no_data_err)
-    | t, target ->
+    | id, None, None -> Fut.return (`No_data no_data_err)
+    | id, t, target ->
         let open Fut.Syntax in
         let* t = trackmate_data wcount `T notify t in
         let* target = trackmate_data wcount `Target notify target in
-        Fut.return (`Obs (Observation.v ~t ~target))
-
+        Fut.return (`Obs (Observation.v ~id ~t ~target))
 end
 
 let work_info work_count =
@@ -383,7 +382,7 @@ let contact_stats contacts = (* FIXME Output.div *)
   let () = Note_brr.Elr.def_children div (S.map stats contacts) in
   div
 
-let download_csv ~tm ~t ~contacts  =
+let download_csv ~obs ~t ~contacts  =
   let at = At.(v (Jstr.v "download") (Jstr.v "t-cells.csv") ::
                class' (Jstr.v "download") :: Negsp.Text.size `S ::
                Negsp.Layout.with_icon ()) in
@@ -391,7 +390,7 @@ let download_csv ~tm ~t ~contacts  =
     El.a ~at [El.label [Icon.document_arrow_down (); El.txt' ".csv file"]]
   in
   ignore (Ev.listen Ev.click (fun _ ->
-      let data = Jstr.v (Results.to_csv tm t contacts) in
+      let data = Jstr.v (Results.to_csv ~obs ~t ~contacts) in
       let data = Result.get_ok (Brr.Uri.encode_component data) in
       let data_url = Jstr.(v "data:text/csv;charset-utf-8," + data) in
       El.set_prop (El.Prop.jstr (Jstr.v "href")) data_url el;)

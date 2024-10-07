@@ -4,7 +4,8 @@
   ---------------------------------------------------------------------------*)
 
 val of_cell_group :
-  Trackmate.t -> Cell.Group.t ->
+  Observation.t ->
+  Cell.Group.t ->
   contacts:Cell.Contact.t list Cell.Group.data option ->
   sel:Cell.id option ->
   set_sel:Cell.id Note.event ->

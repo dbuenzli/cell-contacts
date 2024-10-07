@@ -10,8 +10,10 @@ open Gg
 
     Observations and derived computations. *)
 
-val is_t_filename : string -> bool
-val is_target_filename : string -> bool
+val t_suffix : string
+val target_suffix : string
+val is_t_filename : string -> string option
+val is_target_filename : string -> string option
 
 (** {1:observations Observations} *)
 
@@ -20,10 +22,14 @@ type t
     trackmate data for T cells and target cells.  *)
 
 val v :
-  t:Trackmate.t option -> target:Trackmate.t option -> (t, string) result
-(** [v ~t ~target] groups trackmate data for target cells and t
+  id:string -> t:Trackmate.t option -> target:Trackmate.t option ->
+  (t, string) result
+(** [v ~id ~t ~target] groups trackmate data for target cells and t
     cells. It checks that the metadata is compatible. At least one set
     must be provided. *)
+
+val id : t -> string
+(** [id o] is the obeservation id. *)
 
 val ref : t -> Trackmate.t
 (** [ref o] is a reference trackmate data for the observation, can
