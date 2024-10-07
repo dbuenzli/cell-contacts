@@ -132,10 +132,9 @@ let render_frame_page tm =
 
 let render_pdf
     ?(title = "T cell tracking") ?(description = "T cell tracking")
-    ~dst tm frames
+    ~dst:oc tm frames
   =
   try
-    Result.ok @@ Out_channel.with_open_bin dst @@ fun oc ->
     let xmp = Vgr.xmp ~title ~description () in
     let warn w = Vgr.pp_warning Format.err_formatter w in
     let font = None in
@@ -143,6 +142,7 @@ let render_pdf
     let render_img = render_frame_page tm in
     List.iter (fun f -> ignore (Vgr.render r (render_img f))) frames;
     ignore (Vgr.render r `End);
-    flush oc
+    flush oc;
+    Ok ()
   with
   | Sys_error e -> Error e

@@ -6,7 +6,7 @@
 open B0_std
 open Result.Syntax
 
-let time fm f = Log.time ~level:Log.App fm f
+let time fm f = Log.time ~level:Log.Info fm f
 
 let find_observation_files dir =
   let find _ fname file (t, target as acc) =

@@ -9,9 +9,11 @@ open Gg
 
 let ( let* ) = Result.bind
 
-let time fm f = Log.time ~level:Log.App fm f
+let () = B0_std.Log.set_level Log.Info
 
-let intersections no_isect obs ~scale ~min_max_distance =
+let time fm f = Log.time ~level:Log.Info fm f
+
+let intersections no_isect obs ~t_scale ~t_min_max_distance =
   let* target = match Observation.target obs with
   | None -> Ok None
   | Some target -> Result.map Option.some (Cell.Group.of_trackmate target)
@@ -20,7 +22,8 @@ let intersections no_isect obs ~scale ~min_max_distance =
   | None -> Ok None
   | Some t ->
       Result.map Option.some
-        (Cell.Group.of_trackmate ~scale ~min_max_distance t)
+        (Cell.Group.of_trackmate ~scale:t_scale
+           ~min_max_distance:t_min_max_distance t)
   in
   let* isect =
     if no_isect then Ok None else match t, target with
@@ -36,26 +39,33 @@ let intersections no_isect obs ~scale ~min_max_distance =
   in
   Ok (t, target, isect)
 
-let to_pdf ~dst obs target t isect =
-  time (fun _ m -> m "Rendered %s" dst) @@ fun () ->
+let to_pdf ~outf obs target t isect =
+  time (fun _ m -> m "Rendered %a" Fpath.pp outf) @@ fun () ->
+  Result.join @@
   match target, t with
   | None, None -> assert (false);
   | Some t, None | None, Some t ->
       let imgs = Cell_img.group t in
-      Cell_img.render_pdf ~dst (Observation.ref obs) imgs
+      Os.File.write_with_oc ~force:false ~make_path:true outf @@ fun oc ->
+      Cell_img.render_pdf ~dst:oc (Observation.ref obs) imgs
   | Some target, Some t ->
       let imgs = Cell_img.groups t target (Option.map fst isect) in
-      Cell_img.render_pdf ~dst (Observation.ref obs) imgs
+      Os.File.write_with_oc ~force:false ~make_path:true outf @@ fun oc ->
+      Cell_img.render_pdf ~dst:oc (Observation.ref obs) imgs
 
-let data out_fmt dir outf no_isect scale min_max_distance =
+let data
+    ~out_fmt ~obs_dir ~outf ~no_isect ~t_scale ~t_min_max_distance ~contact_spec
+  =
   Log.if_error ~use:1 @@
-  let* dir = Fpath.of_string dir in
+  let* dir = Fpath.of_string obs_dir in
   let* obs = Cli_data.load_observation dir in
-  let* t, target, isect = intersections no_isect obs ~scale ~min_max_distance in
+  let* t, target, isect =
+    intersections no_isect obs ~t_scale ~t_min_max_distance
+  in
   match out_fmt with
   | `Pdf ->
-      let dst = Fpath.to_string (Fpath.(dir / "tracking.pdf")) in
-      let* () = to_pdf ~dst obs target t isect in Ok 0
+      let* () = to_pdf ~outf obs target t isect in
+      Ok 0
   | `Csv -> (failwith "TODO" : unit); Ok 0
 
 let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
@@ -107,7 +117,9 @@ let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
   | _ -> Error "Could not find t-cells and target cells in observation."
 
 (* Command line interface *)
+
 open Cmdliner
+open Cmdliner.Term.Syntax
 
 let obs_dir =
   let doc = "Observation directory. The observation directory should \
@@ -130,27 +142,20 @@ let t_min_max_distance =
        info ["t-dead-limit"] ~doc ~docv:"DIST")
 
 let contact_spec =
-  let min_frame_count =
+  let+ min_frame_count =
     let doc = "Min. frames for stable contact." in
     Arg.(value & opt int Cell.Contact.spec_default.min_frame_count &
          info ["c-min-frame-count"] ~doc ~docv:"FRAMECOUNT")
-  in
-  let allowed_overlap_gap_length =
+  and+ allowed_overlap_gap_length =
     let doc = "Allowed overlap gap length." in
     Arg.(value & opt int Cell.Contact.spec_default.allowed_overlap_gap_length &
          info ["c-allowed-gap"] ~doc ~docv:"FRAMECOUNT")
-  in
-  let min_overlap_pct =
+  and+ min_overlap_pct =
     let doc = "Minimal percentage overlap for contact." in
     Arg.(value & opt int Cell.Contact.spec_default.min_overlap_pct &
          info ["c-min-pct"] ~doc ~docv:"PCT")
   in
-  let make min_frame_count allowed_overlap_gap_length min_overlap_pct =
-    { Cell.Contact.min_frame_count;
-      allowed_overlap_gap_length; min_overlap_pct }
-  in
-  Term.(const make $ min_frame_count $ allowed_overlap_gap_length $
-        min_overlap_pct)
+  { Cell.Contact.min_frame_count; allowed_overlap_gap_length; min_overlap_pct }
 
 let data =
   let out_fmt =
@@ -158,30 +163,31 @@ let data =
     let doc =
       Fmt.str "Output format. Must be %s." (Arg.doc_alts_enum fmts)
     in
-    let docv = "FMT" in
     Arg.(value & opt (Arg.enum fmts) `Pdf &
-         info ["f"; "output-format"] ~doc ~docv)
+         info ["f"; "output-format"] ~doc ~docv:"FMT")
   in
   let outf =
     let doc = "Output file. Use $(b,-) for stdout." and docv = "FILE" in
-    Arg.(value & opt string "-" & info ["o"] ~doc ~docv)
+    Arg.(value & opt B0_std_cli.fpath Fpath.dash & info ["o"] ~doc ~docv)
   in
   let no_isect =
     let doc = "Do not intersect." in
     Arg.(value & flag & info ["no-intersect"] ~doc)
   in
-  Cmd.v (Cmd.info "data")
-    Term.(const data $ out_fmt $ obs_dir $ outf $ no_isect $
-          t_scale $ t_min_max_distance)
+  Cmd.v (Cmd.info "data") @@
+  let+ out_fmt and+ obs_dir and+ outf and+ no_isect and+ t_scale
+  and+ t_min_max_distance and+ contact_spec in
+  data ~out_fmt ~obs_dir ~outf ~no_isect
+    ~t_scale ~t_min_max_distance ~contact_spec
 
 let debug =
   let t_cell_id =
     let doc = "Cell id" in
     Arg.(value & opt (some int) None & info ["id"] ~doc ~docv:"ID")
   in
-  Cmd.v (Cmd.info "debug")
-    Term.(const debug $ obs_dir $ t_cell_id $
-          t_scale $ t_min_max_distance $ contact_spec)
+  Cmd.v (Cmd.info "debug") @@
+  Term.(const debug $ obs_dir $ t_cell_id $
+        t_scale $ t_min_max_distance $ contact_spec)
 
 let cell =
   let doc = "Process trackmate cell data" in

@@ -25,4 +25,4 @@ val groups :
 val tm_view : aspect:float -> Trackmate.t -> Box2.t * (Vg.image -> Vg.image)
 val render_pdf :
   ?title:string -> ?description:string ->
-  dst:string -> Trackmate.t -> Vg.image list -> (unit, string) result
+  dst:Out_channel.t -> Trackmate.t -> Vg.image list -> (unit, string) result
