@@ -7,8 +7,6 @@ val to_csv :
   Trackmate.t -> Cell.Group.t ->
   Cell.Contact.t list Cell.Group.data option -> string
 
-type sel_idx := int
-
 val of_cell_group :
   Trackmate.t -> Cell.Group.t ->
   contacts:Cell.Contact.t list Cell.Group.data option ->
