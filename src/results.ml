@@ -182,7 +182,7 @@ let id =
   { name = "Id";
     name_th = ""; href = href "Track_ID.";
     enc = string_enc; get = (fun obs _ _ t _ ->
-      Observation.id obs ^ Printf.sprintf "%03d" t.tid) }
+      String.concat "-" [Observation.id obs; Printf.sprintf "%04d" t.tid]) }
 
 let contacts =
   { name = "Contacts"; name_th = ""; href = None;

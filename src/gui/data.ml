@@ -225,17 +225,48 @@ module Load = struct
   | `Done (k, _) -> Fmt.str "Loaded %s" (kind k)
   | `Error (k, _, e) -> Fmt.str "%s error: %s" (kind k) e
   | `No_data e -> e
-  | `Obs _ -> Fmt.str "Observation loaded."
+  | `Obs (Ok obs) -> Fmt.str "Observation %s loaded." (Observation.id obs)
+  | `Obs (Error e) -> Fmt.str "Observation error: %s." e
 
-  let find_observation_files files =
-    let find (id, t, target as acc) file =
+  (* Annoingly this code is extremly similar to the one in cli_data.ml
+     Would need a small cross platform file abstraction. *)
+
+  module String_map = Map.Make (String)
+  type pair = { t : File.t option; target : File.t option }
+
+  let add_t id file m =
+    let upd = function
+    | None -> Some { t = Some file; target = None }
+    | Some p -> Some { p with t = Some file }
+    in
+    String_map.update id upd m
+
+  let add_target id file m =
+    let upd = function
+    | None -> Some { t = None; target = Some file }
+    | Some p -> Some { p with target = Some file }
+    in
+    String_map.update id upd m
+
+  let find_observation_in_files files =
+    let find acc file =
       let name = File.name file in
       if not (Jstr.ends_with ~suffix:(Jstr.v ".xml") name) then acc else
-      let name = Jstr.to_string (Jstr.lowercased name) in
-      if Observation.is_t_filename name then (id, Some file, target) else
-      if Observation.is_target_filename name then (id, t, Some file) else acc
+      let name = Jstr.to_string name in
+      match Observation.is_t_filename name with
+      | Some id -> add_t id file acc
+      | None ->
+          match Observation.is_target_filename name with
+          | Some id -> add_target id file acc
+          | None -> acc
     in
-    List.fold_left find ("", None, None) files
+    let m = List.fold_left find String_map.empty files in
+    let obss =
+      String_map.fold (fun id p acc -> (id, p.t, p.target) :: acc) m []
+    in
+    match obss with
+    | [] -> None
+    | obs :: _ (* XXX would be nice to support multiobs but time… *) -> Some obs
 
   let trackmate_data wcount kind notify = function
   | None -> Fut.return None
@@ -262,12 +293,12 @@ module Load = struct
       Fut.return r
 
   let no_data_err =
-    "Could not find observation data. No t-*.xml or target-*.xml file."
+    "Could not find observation data. No *-t.xml or *-target.xml file."
 
   let observation wcount notify files =
-    ignore @@ Fut.map notify @@ match find_observation_files files with
-    | id, None, None -> Fut.return (`No_data no_data_err)
-    | id, t, target ->
+    ignore @@ Fut.map notify @@ match find_observation_in_files files with
+    | None -> Fut.return (`No_data no_data_err)
+    | Some (id, t, target) ->
         let open Fut.Syntax in
         let* t = trackmate_data wcount `T notify t in
         let* target = trackmate_data wcount `Target notify target in
@@ -283,12 +314,15 @@ let work_info work_count =
       Output.span (S.map count (Work.Counter.value work_count));]
 
 let progress p =
-  let log = S.hold "No observation." (E.map Load.progress p) in
+  let log =
+    S.hold "No observation. Select two matching *-t.xml and *-target.xml files."
+      (E.map Load.progress p)
+  in
   El.p ~at:[Negsp.Text.size `S] [Output.span log]
 
 let input_dir_files ~enabled () =
-  let label = [Icon.database (); El.txt' "Load observation directory…"] in
-  Input.files ~enabled ~select:`Dir (`Els (S.const label))
+  let label = [Icon.database (); El.txt' "Load matching observation files…"] in
+  Input.files ~enabled ~select:`Files (`Els (S.const label))
 
 let input_obs ~enabled ~work_counter:wcount =
   let work_info = work_info wcount in
@@ -390,7 +424,7 @@ let download_csv ~obs ~t ~contacts  =
     El.a ~at [El.label [Icon.document_arrow_down (); El.txt' ".csv file"]]
   in
   ignore (Ev.listen Ev.click (fun _ ->
-      let data = Jstr.v (Results.to_csv ~obs ~t ~contacts) in
+      let data = Jstr.v (Results.to_csv ~headers:true ~obs ~t ~contacts) in
       let data = Result.get_ok (Brr.Uri.encode_component data) in
       let data_url = Jstr.(v "data:text/csv;charset-utf-8," + data) in
       El.set_prop (El.Prop.jstr (Jstr.v "href")) data_url el;)
