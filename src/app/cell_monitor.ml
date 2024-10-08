@@ -124,7 +124,6 @@ let stats ~t ~target =
   in
   El.div ~at [t; target; isect; sel]
 
-
 let mouse_click e =
   let mouse_to_pt e ev = (* N.B. y = 0 is on top *)
     let ev = Ev.as_type ev in

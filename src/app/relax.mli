@@ -3,11 +3,10 @@
    SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
+(** Avoids long synchronous function calls (generic). *)
+
 val run : (unit -> 'a) -> 'a Fut.t
 val run' : (unit -> 'a Fut.t) -> 'a Fut.t
-
-
-
 
 module E : sig
   val map : ('a -> 'b Fut.t) -> 'a Note.event -> 'b Note.event

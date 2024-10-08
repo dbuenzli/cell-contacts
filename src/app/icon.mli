@@ -3,7 +3,7 @@
    SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
-(** SVG Icons.
+(** SVG Icons (generic).
 
     Taken from {{:https://heroicons.com/}heroicons}. *)
 

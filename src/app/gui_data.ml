@@ -104,16 +104,14 @@ module Settings = struct
       in
       small_light [El.txt' t]
     in
-    count, El.div [El.div ~at [el; Output.span (S.l2 show_dur obs count)];
-                   txt]
+    count, El.div [El.div ~at [el; Output.span (S.l2 show_dur obs count)]; txt]
 
   let min_t_overlap ~enabled init =
     let min = 0 and max = 100 in
     let init = if init < min then init else if init > max then max else init in
     let label =
       `Els
-        (S.const [Icon.square_2_stack ();
-                  El.txt' "Min. % overlap for contact"])
+        (S.const [Icon.square_2_stack (); El.txt' "Min. % overlap for contact"])
     in
     let min = S.const min and max = S.const max in
     let overlap, el =
@@ -271,7 +269,7 @@ module Load = struct
   let trackmate_data wcount kind notify = function
   | None -> Fut.return None
   | Some file ->
-      let () = Work.Counter.incr wcount in
+      let () = Results_worker.Counter.incr wcount in
       let open Fut.Result_syntax in
       let handle_error = function
       | Ok tm -> Some tm
@@ -289,7 +287,7 @@ module Load = struct
       | Error _ as v -> v
       | Ok _ as v -> notify (`Done (kind, file)); v
       in
-      Work.Counter.decr wcount;
+      Results_worker.Counter.decr wcount;
       Fut.return r
 
   let no_data_err =
@@ -310,8 +308,8 @@ let work_info work_count =
   let at = Negsp.Layout.cluster ~gap:(`Size (Negsp.Size.raw "0.5em")) () in
   let at = Negsp.Text.size `S :: at in
   El.div ~at
-    [ Output.spinner (S.Bool.not (Work.Counter.is_zero work_count));
-      Output.span (S.map count (Work.Counter.value work_count));]
+    [ Output.spinner (S.Bool.not (Results_worker.Counter.is_zero work_count));
+      Output.span (S.map count (Results_worker.Counter.value work_count));]
 
 let progress p =
   let log =
@@ -355,18 +353,18 @@ let make_group
 let cell_group wcount ~scale ~min_max_distance group obs =
   let t3 s0 s1 s2 = S.l3 (fun v0 v1 v2 -> (v0, v1, v2)) s0 s1 s2 in
   let cells (o, scale, min_max_distance) =
-    Work.Counter.incr wcount;
+    Results_worker.Counter.incr wcount;
     let g =
       make_group ?scale ?min_max_distance (Option.join (Option.map group o))
     in
-    Fut.map (fun v -> Work.Counter.decr wcount; v) g
+    Fut.map (fun v -> Results_worker.Counter.decr wcount; v) g
   in
   let filler = Fun.const None in
   Relax.S.patience_map ~filler cells (t3 obs scale min_max_distance)
 
 let intersect wcount t target =
   let intersect wcount (t, target) =
-    Work.Counter.incr wcount;
+    Results_worker.Counter.incr wcount;
     let tt = timer "Page: intersecting" in
     let f = match t, target with
     | Some t, Some target ->
@@ -377,10 +375,12 @@ let intersect wcount t target =
             Console.(error [str "Isect error:"; str e]);
             None
         in
-        Fut.map ret (Work.send (Work.Cell_isect (t, target)))
+        Fut.map ret
+          (Results_worker.send (Results_worker.Cell_isect (t, target)))
     | _ -> Fut.return None
     in
-    Fut.map (fun r -> Work.Counter.decr wcount; Brr.Console.time_end tt;r) f
+    Fut.map (fun r ->
+        Results_worker.Counter.decr wcount; Brr.Console.time_end tt;r) f
   in
   let filler = Fun.const None in
   Relax.S.patience_map ~filler (intersect wcount) (S.Pair.v t target)
@@ -391,10 +391,11 @@ let contacts wcount contact_spec isect =
   let contacts wcount (contact_spec, isect) = match isect with
   | None -> Fut.return None
   | Some _ ->
-      Work.Counter.incr wcount;
+      Results_worker.Counter.incr wcount;
       let tt = timer "Page: contacts" in
-      let f = Work.send (Work.Cell_contacts contact_spec) in
-      Fut.map (fun r -> Work.Counter.decr wcount; Brr.Console.time_end tt;r) f
+      let f = Results_worker.send (Results_worker.Cell_contacts contact_spec) in
+      Fut.map (fun r ->
+          Results_worker.Counter.decr wcount; Brr.Console.time_end tt;r) f
   in
   Relax.S.map (contacts wcount) ~init:None (S.Pair.v contact_spec isect)
 

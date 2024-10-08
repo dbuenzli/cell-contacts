@@ -3,7 +3,7 @@
    SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
-(** WebWorker work queue. *)
+(** WebWorker work queue (generic). *)
 
 (** The type for work. *)
 module type WORK = sig

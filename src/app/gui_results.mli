@@ -3,8 +3,12 @@
    SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
-open Note
-open Brr
+(** GUI for results. *)
 
-
-val txt : ?at:At.t list -> El.cons -> string signal -> El.t
+val of_cell_group :
+  Observation.t ->
+  Cell.Group.t ->
+  contacts:Cell.Contact.t list Cell.Group.data option ->
+  sel:Cell.id option ->
+  set_sel:Cell.id Note.event ->
+  Cell.id option Note.signal * Brr.El.t

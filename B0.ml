@@ -5,20 +5,34 @@ open Result.Syntax
 
 let b0_std = B0_ocaml.libname "b0.std"
 let fmt = B0_ocaml.libname "fmt"
-let xmlm = B0_ocaml.libname "xmlm"
+let brr = B0_ocaml.libname "brr"
+let cmdliner = B0_ocaml.libname "cmdliner"
 let gg = B0_ocaml.libname "gg"
 let gg_kit = B0_ocaml.libname "gg.kit"
-let vg = B0_ocaml.libname "vg"
-let vg_pdf = B0_ocaml.libname "vg.pdf"
-let vg_htmlc = B0_ocaml.libname "vg.htmlc"
-let brr = B0_ocaml.libname "brr"
-let brr_poked = B0_ocaml.libname "brr.poked"
 let negsp_brr = B0_ocaml.libname "negsp.brr"
 let note = B0_ocaml.libname "note"
 let note_brr = B0_ocaml.libname "note.brr"
-let evidence = B0_ocaml.libname "vz.evidence"
-let cmdliner = B0_ocaml.libname "cmdliner"
+let vg = B0_ocaml.libname "vg"
+let vg_htmlc = B0_ocaml.libname "vg.htmlc"
+let vg_pdf = B0_ocaml.libname "vg.pdf"
+let xmlm = B0_ocaml.libname "xmlm"
+(* let evidence = B0_ocaml.libname "vz.evidence" *)
 (* let vz_doc = B0_ocaml.libname "vz.doc" *)
+
+(* Cli tool *)
+
+let cell_contacts_cli =
+  let doc = "Cell contacts batch processing" in
+  let srcs = [`Dir ~/"src"; `Dir_rec ~/"src/cli";] in
+  let requires = [b0_std; fmt; gg; gg_kit; vg; vg_pdf; cmdliner; xmlm] in
+  let meta =
+    (* TODO b0: don't let jsoo builds downgrade everything to bytecode *)
+    B0_meta.empty
+    |> B0_meta.add B0_ocaml.Code.needs `Native
+  in
+  B0_ocaml.exe "cell-contacts" ~doc ~meta ~srcs ~requires
+
+(* HTML GUI *)
 
 let vcs_describe b =
   (* TODO memo ? *)
@@ -27,11 +41,12 @@ let vcs_describe b =
   let* vcs = B0_vcs_repo.get () ~dir in
   B0_vcs_repo.describe vcs ~dirty_mark:true "HEAD"
 
-let favicon = ~/"src/gui/assets/favicon.ico"
-let font = ~/"src/gui/assets/Inter.var.woff2"
-let negsp_css = ~/"src/gui/negsp.css"
-let gui_css = ~/"src/gui/gui.css"
-let linker = ~/"src/gui/gui.html"
+let favicon = ~/"src/app/assets/favicon.ico"
+let font = ~/"src/app/assets/Inter.var.woff2"
+let negsp_css = ~/"src/app/negsp.css"
+let app_css = ~/"src/app/app.css"
+let linker = ~/"src/app/app.html"
+let app_file = ~/"cell-contacts.html"
 
 let data_url b ~type' file = (* TODO add something like that to b0 *)
   let open Fut.Syntax in
@@ -39,27 +54,28 @@ let data_url b ~type' file = (* TODO add something like that to b0 *)
   let b64 = B0_base64.encode favicon in
   Fut.return (String.concat "" ["data:"; type'; ";base64,"; b64])
 
-let build_cell_gui proc b =
+let pack_app proc b =
   let open Fut.Syntax in
   ignore (proc b);
+  (* Pack everything in the HTML file. *)
   let m = B0_build.memo b in
   let favicon = B0_build.in_scope_dir b favicon in
   let font = B0_build.in_scope_dir b font in
-  let gui_css = B0_build.in_scope_dir b gui_css in
+  let app_css = B0_build.in_scope_dir b app_css in
   let negsp_css = B0_build.in_scope_dir b negsp_css in
   let linker = B0_build.in_scope_dir b linker in
-  let script = B0_build.in_current_dir b (Fpath.v "gui.js") in
-  let app = B0_build.in_current_dir b (Fpath.v "cell.html") in
-  let reads = [favicon; font; negsp_css; gui_css; linker; script] in
+  let script = B0_build.in_current_dir b ~/"app.js" in
+  let app_file = B0_build.in_current_dir b app_file in
+  let reads = [favicon; font; negsp_css; app_css; linker; script] in
   let version = vcs_describe b |> B0_memo.fail_if_error m in
-  B0_memo.ready_files m [favicon; font; gui_css; negsp_css; linker];
-  begin B0_memo.write m ~reads ~stamp:version app @@ fun () ->
+  B0_memo.ready_files m [favicon; font; app_css; negsp_css; linker];
+  begin B0_memo.write m ~reads ~stamp:version app_file @@ fun () ->
     Fut.sync @@
     let* linker = B0_memo.read m linker in
     let* script = B0_memo.read m script in
-    let* gui_css = B0_memo.read m gui_css in
+    let* app_css = B0_memo.read m app_css in
     let* negsp_css = B0_memo.read m negsp_css in
-    let css = String.concat "\n" [negsp_css; gui_css] in
+    let css = String.concat "\n" [negsp_css; app_css] in
     let* font = data_url b ~type':"font/woff2" font in
     let font_var = function "FONT" -> Some font | _ -> None in
     let* favicon = data_url b ~type':"image/x-icon" favicon in
@@ -75,74 +91,24 @@ let build_cell_gui proc b =
   end;
   Fut.return ()
 
-(* Units *)
-
-let protocol_md = ~/"PROTOCOL.md"
-let protocol =
-  let html = Fpath.(protocol_md -+ ".html") in
-  let exe_proc b =
-    let open Fut.Syntax in
-    let m = B0_build.memo b in
-    let scope = B0_build.scope_dir b in
-    let md = Fpath.(scope // protocol_md) in
-    let md_html = Fpath.(scope / "doc" / "md.html") in
-    let md_css = Fpath.(scope / "doc" / "md.css") in
-    let build = B0_build.current_dir b in
-    let html = Fpath.(build // html) in
-    let hfrag = Fpath.(html -+ ".hfrag") in
-    B0_memo.ready_files m [md; md_html; md_css];
-    B0_cmark.cmd m ~opts:Cmd.(arg "--unsafe") ~mds:[md] ~o:hfrag;
-    begin B0_memo.write m ~reads:[hfrag; md_html; md_css] html @@ fun () ->
-      Fut.sync @@
-      let* md_html = B0_memo.read m md_html in
-      let* md_css = B0_memo.read m md_css in
-      let* frag = B0_memo.read m hfrag in
-      let vars = function
-      | "BODY" -> Some frag | "CSS" -> Some md_css | _ -> None
-      in
-      let content = String.subst_pct_vars vars md_html in
-      Fut.return (Ok (content));
-    end;
-    Fut.return ()
-  in
-  let meta = B0_meta.empty |> ~~ B0_show_url.url (`In (`Unit_dir, html)) in
-  B0_unit.make "protocol" ~doc:"Description of the protocol" ~meta exe_proc
-
-let cell_gui =
-  let doc = "Cell app" in
-  let srcs = [`Dir ~/"src"; `Dir ~/"src/gui"] in
+let cell_contacts_app =
+  let doc = "Cell contacts application" in
+  let srcs = [`Dir ~/"src"; `Dir ~/"src/app"] in
   let requires =
-    [fmt; gg; gg_kit; vg; vg_pdf; vg_htmlc; brr; note; note_brr;
-     negsp_brr; evidence]
-  in
-  let opts =
-    (* TODO I think should be no longer needed with jsoo 5. *)
-    Cmd.(arg "--enable=use-js-string")
+    [fmt; gg; gg_kit; vg; vg_pdf; vg_htmlc; brr; note; note_brr; negsp_brr]
   in
   let meta =
     B0_meta.empty
     |> ~~ B0_jsoo.compilation_mode `Whole
-    |> ~~ B0_jsoo.compile_opts opts
-    |> ~~ B0_jsoo.link_opts opts
     |> ~~ B0_jsoo.source_map None (* Some `Inline) *)
-    |> ~~ B0_show_url.url (`In (`Unit_dir, ~/"cell.html"))
+    |> ~~ B0_show_url.url (`In (`Unit_dir, app_file))
   in
-  let wrap = build_cell_gui in
-  B0_jsoo.exe "gui.js" ~name:"cell-gui" ~requires ~meta ~srcs ~wrap ~doc
-
-let cell_exe =
-  let srcs = [`Dir ~/"src"; `Dir_rec ~/"src/cli";] in
-  let requires = [b0_std; fmt; gg; gg_kit; vg; vg_pdf; cmdliner; xmlm] in
-  let meta =
-    (* TODO b0: don't let jsoo builds downgrade everything to bytecode *)
-    B0_meta.empty
-    |> B0_meta.add B0_ocaml.Code.needs `Native
-  in
-  B0_ocaml.exe "cell" ~meta ~srcs ~requires
+  let wrap = pack_app in
+  B0_jsoo.exe "app.js" ~name:"app" ~requires ~meta ~srcs ~wrap ~doc
 
 (* Actions *)
 
-let mount_dir = Fpath.v "nosync/deploy"
+let mount_dir = ~/"nosync/deploy"
 let webdav_url = "https://cloud.uni-konstanz.de/public.php/webdav"
 let mount =
   B0_unit.of_action' "mount" ~doc:"(Un)mount deploy directory" @@
@@ -171,7 +137,7 @@ let mount =
 
 let deploy =
   let doc = "Build and deploy to mount directory" in
-  B0_unit.of_action "deploy" ~units:[cell_gui; protocol] ~doc @@
+  B0_unit.of_action "deploy" ~units:[cell_contacts_app] ~doc @@
   fun env _ ~args ->
   let dir = Fpath.(B0_env.scope_dir env // mount_dir) in
   let mount_error = Error "No deploy directory use 'b0 -- mount' first" in
@@ -179,25 +145,50 @@ let deploy =
   if not exists then mount_error else
   let* is_mount = Os.Path.is_mount_point dir in
   if not is_mount then mount_error else
-  let protocol_md = B0_env.in_scope_dir env protocol_md in
-  let protocol_html = B0_env.in_unit_dir env protocol ~/"PROTOCOL.html" in
-  let changes_md = B0_env.in_scope_dir env ~/"CHANGES.md" in
-  let cell_html = B0_env.in_unit_dir env cell_gui ~/"cell.html" in
-  let copy f dir =
-    Os.Cmd.run Cmd.(arg "cp" %% path f %%path Fpath.(dir / basename f))
+  let files =
+    [ B0_env.in_scope_dir env ~/"PROTOCOL.md";
+      B0_env.in_scope_dir env ~/"CHANGES.md";
+      B0_env.in_scope_dir env ~/"PAPER.md";
+      B0_env.in_unit_dir env cell_contacts_app app_file ]
+  in
+  let copy ~dst:dir file =
+    Os.Cmd.run Cmd.(arg "cp" %% path file %%path Fpath.(dir / basename file))
 (*
     Os.File.copy
       ~atomic:false (* This trips webdav *)
       ~force:true ~make_path:false ~src:f Fpath.(dir / basename f) *)
   in
-  let* () = copy protocol_md dir in
-  let* () = copy protocol_html dir in
-  let* () = copy changes_md dir in
-  let* () = copy cell_html dir in
+  let* () = List.iter_stop_on_error (copy ~dst:dir) files in
   Ok ()
 
 (* Default pack *)
 
 let default =
-  B0_pack.make "default" ~locked:false ~doc:"Cell tracker app" @@
+  let meta =
+    B0_meta.empty
+    |> ~~ B0_meta.authors ["The cell contacts programmers"]
+    |> ~~ B0_meta.maintainers ["Daniel Bünzli <daniel.buenzl i@erratique.ch>"]
+    |> ~~ B0_meta.homepage "https://github.com/dbuenzli/cell-contacts"
+    |> ~~ B0_meta.issues "https://github.com/dbuenzli/cell-contacts/issues"
+    |> ~~ B0_meta.licenses ["ISC"]
+    |> ~~ B0_opam.depends
+      [ "b0", {|dev|};
+        "ocaml", {|>= "4.14.0"|};
+        "ocamlfind", {|build|};
+        "fmt", {|>= "0.9.0"|};
+        "brr", {|>= "0.0.7"|};
+        "cmdliner", {|>= "1.3.0"|};
+        "gg", {||};
+        "vg", {||};
+        "negsp", {||};
+        "xmlm", {||};
+        "note", {||};
+        "js_of_ocaml", {|>= "5.1.0"|};
+      ]
+    |> ~~ B0_opam.pin_depends
+      [ "negsp.dev", "git+https://erratique.ch/repos/negsp.git#main";
+        "gg.dev", "git+https://erratique.ch/repos/gg.git#master"; ]
+    |> B0_meta.tag B0_opam.tag
+  in
+  B0_pack.make "default" ~locked:false ~doc:"Cell contacts app" ~meta @@
   B0_unit.list ()

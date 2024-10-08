@@ -8,9 +8,7 @@ open Result.Syntax
 open Gg
 
 let ( let* ) = Result.bind
-
 let () = B0_std.Log.set_level Log.Info
-
 let time fm f = Log.time ~level:Log.Info fm f
 
 let intersections no_isect obs ~t_scale ~t_min_max_distance =
@@ -53,7 +51,7 @@ let to_pdf ~outf obs target t isect =
       Os.File.write_with_oc ~force:false ~make_path:true outf @@ fun oc ->
       Cell_img.render_pdf ~dst:oc (Observation.ref obs) imgs
 
-let data
+let results
     ~out_fmt ~obs_dir ~outf ~no_isect ~t_scale ~t_min_max_distance ~contact_spec
   =
   Log.if_error ~use:1 @@
@@ -105,7 +103,6 @@ let data
       let res = String.concat "" (List.rev res) in
       let* () = Os.File.write ~force:false ~make_path:true outf res in
       Ok 0
-
 
 let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
   let iter_results tm cells contacts f =
@@ -197,7 +194,7 @@ let contact_spec =
   in
   { Cell.Contact.min_frame_count; allowed_overlap_gap_length; min_overlap_pct }
 
-let data =
+let results =
   let out_fmt =
     let fmts = [ "pdf", `Pdf; "csv", `Csv] in
     let doc =
@@ -214,10 +211,10 @@ let data =
     let doc = "Do not intersect." in
     Arg.(value & flag & info ["no-intersect"] ~doc)
   in
-  Cmd.v (Cmd.info "data") @@
+  Cmd.v (Cmd.info "results" ~doc:"Compute results") @@
   let+ out_fmt and+ obs_dir and+ outf and+ no_isect and+ t_scale
   and+ t_min_max_distance and+ contact_spec in
-  data ~out_fmt ~obs_dir ~outf ~no_isect
+  results ~out_fmt ~obs_dir ~outf ~no_isect
     ~t_scale ~t_min_max_distance ~contact_spec
 
 let debug =
@@ -232,7 +229,7 @@ let debug =
 let cell =
   let doc = "Process trackmate cell data" in
   Cmd.group (Cmd.info "cell" ~version:"%%VERSION%%" ~doc) @@
-  [ data; debug]
+  [ results; debug]
 
 let main () = Cmd.eval' cell
 let () = if !Sys.interactive then () else exit (main ())

@@ -1,0 +1,39 @@
+opam-version: "2.0"
+name: "cell-contacts"
+synopsis: "- Detect contacts between T and target cells"
+description: """\
+Processes paired [TrackMate] XML files to detect contacts between T
+and target cells according to a few tweakable parameters.
+
+[TrackMate]: https://imagej.net/plugins/trackmate/
+
+```
+b0 -- cell-contacts results data > results.csv
+b0 -- .show-url app
+```
+
+![screenshot](doc/screenshot.png)"""
+maintainer: "Daniel Bünzli <daniel.buenzl i@erratique.ch>"
+authors: "The cell contacts programmers"
+license: "ISC"
+homepage: "https://github.com/dbuenzli/cell-contacts"
+bug-reports: "https://github.com/dbuenzli/cell-contacts/issues"
+depends: [
+  "b0" {dev}
+  "ocaml" {>= "4.14.0"}
+  "ocamlfind" {build}
+  "fmt" {>= "0.9.0"}
+  "brr" {>= "0.0.7"}
+  "cmdliner" {>= "1.3.0"}
+  "gg"
+  "vg"
+  "negsp"
+  "xmlm"
+  "note"
+  "js_of_ocaml" {>= "5.1.0"}
+]
+build: ["b0" "--lock" "-p" "default"]
+pin-depends: [
+  ["negsp.dev" "git+https://erratique.ch/repos/negsp.git#main"]
+  ["gg.dev" "git+https://erratique.ch/repos/gg.git#master"]
+]

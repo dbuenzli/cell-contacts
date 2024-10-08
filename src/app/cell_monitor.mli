@@ -3,6 +3,8 @@
    SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
+(** Screen showing observation frames. *)
+
 type frame := int
 
 val v :

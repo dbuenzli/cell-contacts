@@ -20,20 +20,20 @@ module Counter = struct
   let is_zero c = c.is_zero
 end
 
-type 'a t =
-| Id : 'a -> 'a t
-| Cell_group : Trackmate.t -> (Cell.Group.t, string) result t
+type 'a work =
+| Id : 'a -> 'a work
+| Cell_group : Trackmate.t -> (Cell.Group.t, string) result work
 | Cell_isect :
     Cell.Group.t * Cell.Group.t ->
-    (Cell.Group.intersections * int, string) result t
+    (Cell.Group.intersections * int, string) result work
 | Cell_contacts :
-    Cell.Contact.spec -> Cell.Contact.t list Cell.Group.data option t
+    Cell.Contact.spec -> Cell.Contact.t list Cell.Group.data option work
 
 let timer tag = let tag = Jstr.v tag in Console.time tag; tag
 
 let last_isect = ref None
 
-let worker_perform : type a. a t -> a Fut.t = function
+let worker_perform : type a. a work -> a Fut.t = function
 | Id v -> Fut.return v
 | Cell_group tm ->
     (* N.B. not worth it. *)
@@ -58,7 +58,7 @@ let worker_perform : type a. a t -> a Fut.t = function
 
 let main_perform ?progress w = worker_perform w
 
-module W = struct type nonrec 'a t = 'a t let perform = worker_perform end
+module W = struct type nonrec 'a t = 'a work let perform = worker_perform end
 module Queue = Work_queue.Make (W)
 let queue = ref None
 
@@ -77,4 +77,4 @@ let setup ~use_worker =
       Console.(warn [str "Could not setup worker, will do without."; e]);
       Fut.return ()
 
-let run_worker () = Console.(log [str "Worker running!"]); Queue.main ()
+let run () = Console.(log [str "Worker running!"]); Queue.main ()

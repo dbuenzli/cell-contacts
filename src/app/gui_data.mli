@@ -3,6 +3,8 @@
    SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
+(** Loading observations and results parameters. *)
+
 open Brr
 
 module Settings : sig
@@ -19,20 +21,20 @@ end
 
 val input_obs :
   enabled:bool Note.signal ->
-  work_counter:Work.Counter.t ->
+  work_counter:Results_worker.Counter.t ->
   Observation.t option Note.signal * El.t
 
 (** {1:groups Groups} *)
 
 val cell_group :
-  Work.Counter.t ->
+  Results_worker.Counter.t ->
   scale:float option Note.signal ->
   min_max_distance:float option Note.signal ->
   ('a -> Trackmate.t option) ->
   'a option Note.signal -> Cell.Group.t option Note.signal
 
 val intersect :
-  Work.Counter.t ->
+  Results_worker.Counter.t ->
   Cell.t Cell.Group.data option Note.signal ->
   Cell.t Cell.Group.data option Note.signal ->
   Cell.Group.intersections option Note.signal
@@ -40,7 +42,7 @@ val intersect :
 (** {1:contacts Contacts} *)
 
 val contacts :
-  Work.Counter.t ->
+  Results_worker.Counter.t ->
   Cell.Contact.spec Note.signal ->
   'a option Note.signal ->
   Cell.Contact.t list Cell.Group.data option Note.signal

@@ -6,7 +6,7 @@
 open Note
 open Brr
 
-(** User input.
+(** User input (generic should be [Vz_doc.Input]).
 
     This module provides simple user interface elements to input
     values from the user. *)

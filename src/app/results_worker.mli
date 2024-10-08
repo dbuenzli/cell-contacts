@@ -3,6 +3,8 @@
    SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
+(** Compute cell results on a web worker. *)
+
 open Gg
 
 module Counter : sig
@@ -15,16 +17,15 @@ module Counter : sig
   val is_zero : t -> bool Note.signal
 end
 
-type 'a t =
-| Id : 'a -> 'a t
-| Cell_group : Trackmate.t -> (Cell.Group.t, string) result t
+type 'a work =
+| Id : 'a -> 'a work
+| Cell_group : Trackmate.t -> (Cell.Group.t, string) result work
 | Cell_isect :
     Cell.Group.t * Cell.Group.t ->
-    (Cell.Group.intersections * int, string) result t
+    (Cell.Group.intersections * int, string) result work
 | Cell_contacts :
-    Cell.Contact.spec -> Cell.Contact.t list Cell.Group.data option t
+    Cell.Contact.spec -> Cell.Contact.t list Cell.Group.data option work
 
-
-val send : ?progress:(string option -> unit) -> 'a t -> 'a Fut.t
+val send : ?progress:(string option -> unit) -> 'a work -> 'a Fut.t
 val setup : use_worker:bool -> unit
-val run_worker : unit -> unit
+val run : unit -> unit

@@ -6,6 +6,8 @@
 open Note
 open Brr
 
+(** Output (generic should be [Vz_doc.Output]). *)
+
 val image :
   ?label:Input.content ->
   size_mm:Gg.Size2.t -> ?view:Gg.Box2.t signal -> Vg.image signal -> El.t
