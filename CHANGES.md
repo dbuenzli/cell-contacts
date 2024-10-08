@@ -3,9 +3,10 @@
 
 * New file naming convention for observations. Rather than having one 
   directory per observation we simply lookup two matching `$ID-t.xml` and
-  `$ID-target.xml` files.  In the UI multiple file selection must be used
-  (rather than a directory before). We prefix the cell identifiers by `$ID` 
-  so that the data can be merged.
+  `$ID-target.xml` files.  In the UI file picker multiple file selection 
+  must be used (rather than a directory before). We prefix the cell identifiers 
+  by `$ID` so that the data from various observations can be merged. We 
+  name the CSV file download `$ID.csv`.
 * Allow to generate CSV files from the command line.
 * Change the blank defaults in the UI and on the command line to those given
   by Vincent. Namely, T scale factor: 1.5, T dead limit 15, contact

@@ -418,7 +418,8 @@ let contact_stats contacts = (* FIXME Output.div *)
   div
 
 let download_csv ~obs ~t ~contacts  =
-  let at = At.(v (Jstr.v "download") (Jstr.v "t-cells.csv") ::
+  let file = Observation.id obs ^ ".csv" in
+  let at = At.(v (Jstr.v "download") (Jstr.v file) ::
                class' (Jstr.v "download") :: Negsp.Text.size `S ::
                Negsp.Layout.with_icon ()) in
   let el =
