@@ -125,3 +125,11 @@ val mean_speed_no_contact :
   Trackmate.t -> t -> Contact.t list -> float
 (** [mean_speed_stable_contact tm c] computes the mean speed when there is
     not contact. *)
+
+(** {1:distances Computing distances} *)
+
+val distances_to_start_frame :
+  normalize:bool -> t -> start_frame:int -> len:int -> float Observation.frames
+(** [distances_to_start_frame c ~start_frame ~len] computes
+    in frame \[[start_frame]; [start_frame + len - 1]\] the distance
+    of [c] to the position it had in [start_frame]. *)

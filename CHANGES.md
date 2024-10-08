@@ -1,16 +1,21 @@
 
 
-
 * New file naming convention for observations. Rather than having one 
   directory per observation we simply lookup two matching `$ID-t.xml` and
   `$ID-target.xml` files.  In the UI file picker multiple file selection 
   must be used (rather than a directory before). We prefix the cell identifiers 
-  by `$ID` so that the data from various observations can be merged. We 
+  by `$ID` so that the data from various observations can be easily merged. We 
   name the CSV file download `$ID.csv`.
-* Allow to generate CSV files from the command line.
+
 * Change the blank defaults in the UI and on the command line to those given
   by Vincent. Namely, T scale factor: 1.5, T dead limit 15, contact
   min frames: 3, contact min overlap 10%, contact frame gap: 1.
+
+* Add distance to first stable contact point computations. Can be downloaded
+  from the UI as a `$ID-distances.csv` file.
+
+* Allow to generate CSV files from the command line.
+
 
 v0.0.7 2023-11-09
 -----------------

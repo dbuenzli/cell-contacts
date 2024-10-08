@@ -37,7 +37,14 @@ let datatable obs ~enabled ~t ~contacts ~set_sel =
           let sel, el =
             Gui_results.of_cell_group obs t ~contacts ~sel:!last_sel ~set_sel
           in
-          sel, [Gui_data.download_csv ~obs ~t ~contacts; el]
+          sel, [
+            El.div ~at:(Negsp.Layout.cluster ()) [
+              Gui_data.download_csv ~obs ~t ~contacts;
+              (match contacts with
+              | None -> El.span []
+              | Some contacts ->
+                  Gui_data.download_distances_csv ~obs ~t ~contacts);];
+            el]
   in
   let div = El.div
       ~at:((* At.style (Jstr.v "align-items: end") :: *)

@@ -27,17 +27,10 @@ single stable contact, we keep the stable contact even if they may
 have up to **DG** frame gaps of contact loss after the initial N
 consecutive frames.
 
-# Stable contact statistics
+# Stable contact distances
 
-For the first stable contact we find (we assume there's only one). We
-compute the following statistics: 
+For each frame of a stable contact we compute the distance between the
+t cell and the position where it was at the first frame of the
+contact. To make it easier to compare these values across cells we
+normalize these values on their maxima.
 
-1. Average acceleration between the first frame of the stable contact and 
-   after a fixed amount of time **at**.
-2. Average acceleration between the first frame of the stable contact and
-   the last frame of the stable contact.
-
-The average acceleration is computed by computing the instantaneous
-velocity at two given frame and dividing by the time between them. The
-instantaneous velocity at a given frame is computed by dividing the
-distance travelled between this frame and the previous one.

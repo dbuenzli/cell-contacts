@@ -173,7 +173,7 @@ let default =
     |> ~~ B0_meta.licenses ["ISC"]
     |> ~~ B0_opam.depends
       [ "b0", {|dev|};
-        "ocaml", {|>= "4.14.0"|};
+        "ocaml", {|>= "5.1.0"|};
         "ocamlfind", {|build|};
         "fmt", {|>= "0.9.0"|};
         "brr", {|>= "0.0.7"|};

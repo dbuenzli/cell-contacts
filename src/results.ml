@@ -3,6 +3,9 @@
    SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
+let cell_id obs id =
+    String.concat "-" [Observation.id obs; Printf.sprintf "%04d" id]
+
 (* Data encoders into table data and csv *)
 
 type 'a enc = { csv : Buffer.t -> 'a -> unit; td : 'a -> string }
@@ -181,8 +184,7 @@ let mean_directional_change_rate =
 let id =
   { name = "Id";
     name_th = ""; href = href "Track_ID.";
-    enc = string_enc; get = (fun obs _ _ t _ ->
-      String.concat "-" [Observation.id obs; Printf.sprintf "%04d" t.tid]) }
+    enc = string_enc; get = (fun obs _ _ t _ -> cell_id obs t.tid) }
 
 let contacts =
   { name = "Contacts"; name_th = ""; href = None;
@@ -279,5 +281,45 @@ let to_csv ~headers ~obs ~t:cells ~contacts =
     in
     let contacts = Option.map (fun c -> c.(i)) contacts in
     add_row b tm cell track contacts cols
+  done;
+  Buffer.contents b
+
+let stable_contact_distances_to_csv
+    ~normalize ~headers ~obs ~t:cells ~contacts =
+  let add_float_array b a =
+    let max = Array.length a - 1 in
+    if max < 0 then () else
+    begin
+      Buffer.add_char b ',';
+      for i = 0 to max do
+        Buffer.add_string b (string_of_float a.(i));
+        if i <> max then Buffer.add_char b ',';
+      done
+    end
+  in
+  let add_headers b =
+    Buffer.add_string b "cell";
+    Buffer.add_char b ',';
+    Buffer.add_string b "ctc";
+    Buffer.add_string b "\r\n";
+  in
+  let b = Buffer.create 5000 in
+  if headers then add_headers b;
+  for i = 0 to Array.length cells - 1 do
+    let add_contact b cell i contact =
+      let start_frame = contact.Cell.Contact.start_frame in
+      let len = Array.length contact.overlaps in
+      let ds = Cell.distances_to_start_frame
+          cell ~normalize ~start_frame ~len
+      in
+      Buffer.add_string b (cell_id obs cell.Cell.track_id);
+      Buffer.add_char b ',';
+      Buffer.add_string b (string_of_int (i + 1));
+      add_float_array b ds;
+      Buffer.add_string b "\r\n";
+    in
+    let cell = cells.(i) in
+    let is_stable c = c.Cell.Contact.kind = `Stable in
+    List.iteri (add_contact b cell) (List.filter is_stable contacts.(i));
   done;
   Buffer.contents b

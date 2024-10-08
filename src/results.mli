@@ -33,3 +33,7 @@ val to_csv :
   obs:Observation.t -> t:Cell.Group.t ->
   contacts:Cell.Contact.t list Cell.Group.data option -> string
 (** [to_csv] renders the results to a CSV file. *)
+
+val stable_contact_distances_to_csv :
+  normalize:bool -> headers:bool -> obs:Observation.t -> t:Cell.Group.t ->
+  contacts:Cell.Contact.t list Cell.Group.data -> string

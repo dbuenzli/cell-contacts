@@ -349,3 +349,16 @@ let mean_speed_no_contact tm cell cs =
       no_contact_ranges (last + 1) rs cs
   in
   frame_ranges_mean_speed tm cell (no_contact_ranges 0 [] cs)
+
+let distances_to_start_frame ~normalize cell ~start_frame ~len =
+  let a = Array.init len @@ fun i ->
+    let s0 = cell.frames.(start_frame) in
+    let s1 = cell.frames.(start_frame + i) in
+    match s0, s1 with
+    | None, _ | _, None -> nan
+    | Some s0, Some s1 -> V2.norm V2.(s1.pos - s0.pos)
+  in
+  if not normalize then a else
+  let max = Array.fold_left Float.max_num Float.min_float a in
+  Array.map_inplace (fun v -> v /. max) a;
+  a

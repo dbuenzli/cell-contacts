@@ -55,3 +55,9 @@ val download_csv :
   t:Cell.Group.t ->
   contacts:Cell.Contact.t list Cell.Group.data option ->
   Brr.El.t
+
+val download_distances_csv :
+  obs:Observation.t ->
+  t:Cell.Group.t ->
+  contacts:Cell.Contact.t list Cell.Group.data ->
+  Brr.El.t

@@ -52,7 +52,8 @@ let to_pdf ~outf obs target t isect =
       Cell_img.render_pdf ~dst:oc (Observation.ref obs) imgs
 
 let results
-    ~out_fmt ~obs_dir ~outf ~no_isect ~t_scale ~t_min_max_distance ~contact_spec
+    ~out_fmt ~obs_dir ~outf ~no_isect ~t_scale ~t_min_max_distance
+    ~contact_spec ~no_normalize
   =
   Log.if_error ~use:1 @@
   let* dir = Fpath.of_string obs_dir in
@@ -73,7 +74,7 @@ let results
           let* () = to_pdf ~outf obs target t isect in
           Ok 0
       end
-  | `Csv ->
+  | `Csv | `Csv_dist as fmt ->
       let rec add_obs ~headers acc = function
       | [] -> acc
       | obs :: obss ->
@@ -93,7 +94,14 @@ let results
             | Some (isects, _errs) -> Ok isects
             in
             let contacts = Cell.Contact.find contact_spec ~t ~target ~isects in
-            Ok (Results.to_csv ~headers ~obs ~t ~contacts:(Some contacts))
+            let res = match fmt with
+            | `Csv -> Results.to_csv ~headers ~obs ~t ~contacts:(Some contacts)
+            | `Csv_dist ->
+                let normalize = not no_normalize in
+                Results.stable_contact_distances_to_csv
+                  ~normalize ~headers ~obs ~t ~contacts
+            in
+            Ok res
           in
           add_obs ~headers:false (res :: acc) obss
       in
@@ -196,7 +204,7 @@ let contact_spec =
 
 let results =
   let out_fmt =
-    let fmts = [ "pdf", `Pdf; "csv", `Csv] in
+    let fmts = [ "pdf", `Pdf; "csv", `Csv; "csv-dist", `Csv_dist] in
     let doc =
       Fmt.str "Output format. Must be %s." (Arg.doc_alts_enum fmts)
     in
@@ -211,11 +219,15 @@ let results =
     let doc = "Do not intersect." in
     Arg.(value & flag & info ["no-intersect"] ~doc)
   in
+  let no_normalize =
+    let doc = "Do not normalize contact distances." in
+    Arg.(value & flag & info ["no-normalize"] ~doc)
+  in
   Cmd.v (Cmd.info "results" ~doc:"Compute contact results") @@
   let+ out_fmt and+ obs_dir and+ outf and+ no_isect and+ t_scale
-  and+ t_min_max_distance and+ contact_spec in
+  and+ t_min_max_distance and+ contact_spec and+ no_normalize in
   results ~out_fmt ~obs_dir ~outf ~no_isect
-    ~t_scale ~t_min_max_distance ~contact_spec
+    ~t_scale ~t_min_max_distance ~contact_spec ~no_normalize
 
 let debug =
   let t_cell_id =

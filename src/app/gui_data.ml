@@ -417,18 +417,37 @@ let contact_stats contacts = (* FIXME Output.div *)
   let () = Note_brr.Elr.def_children div (S.map stats contacts) in
   div
 
+
+let download_at file =
+  At.download (Jstr.v file) ::
+  At.class' (Jstr.v "download") :: Negsp.Text.size `S ::
+  Negsp.Layout.with_icon ()
+
+let download_click el data =
+  let data = Result.get_ok (Brr.Uri.encode_component data) in
+  let data_url = Jstr.(v "data:text/csv;charset-utf-8," + data) in
+  El.set_prop (El.Prop.jstr (Jstr.v "href")) data_url el
+
 let download_csv ~obs ~t ~contacts  =
-  let file = Observation.id obs ^ ".csv" in
-  let at = At.(v (Jstr.v "download") (Jstr.v file) ::
-               class' (Jstr.v "download") :: Negsp.Text.size `S ::
-               Negsp.Layout.with_icon ()) in
-  let el =
-    El.a ~at [El.label [Icon.document_arrow_down (); El.txt' ".csv file"]]
-  in
+  let at = download_at (Observation.id obs ^ ".csv") in
+  let a = El.label [Icon.document_arrow_down (); El.txt' ".csv file"] in
+  let el = El.a ~at [a] in
   ignore (Ev.listen Ev.click (fun _ ->
       let data = Jstr.v (Results.to_csv ~headers:true ~obs ~t ~contacts) in
-      let data = Result.get_ok (Brr.Uri.encode_component data) in
-      let data_url = Jstr.(v "data:text/csv;charset-utf-8," + data) in
-      El.set_prop (El.Prop.jstr (Jstr.v "href")) data_url el;)
+      download_click el data)
       (El.as_target el));
+  el
+
+let download_distances_csv ~obs ~t ~contacts =
+  let at = download_at (Observation.id obs ^ "-distances.csv") in
+  let a = El.label [Icon.document_arrow_down ();
+                    El.txt' "-distances.csv file"]
+  in
+  let el = El.a ~at [a] in
+  ignore (Ev.listen Ev.click (fun _ ->
+      let data = Jstr.v (Results.stable_contact_distances_to_csv
+                           ~normalize:true
+                           ~headers:true ~obs ~t ~contacts)
+      in
+      download_click el data) (El.as_target el));
   el
