@@ -160,8 +160,8 @@ open Cmdliner.Term.Syntax
 
 let obs_dir =
   let doc = "Observation directory. The observation directory should \
-             have one $(b,t-*.xml) and one (b,target-*.xml) TrackMate \
-             XML file."
+             have matchgin $(b,*-t.xml) and $(b,*-target.xml) TrackMate \
+             XML files."
   in
   Arg.(required & pos 0 (some file) None & info [] ~doc ~docv:"OBSDIR")
 
@@ -211,7 +211,7 @@ let results =
     let doc = "Do not intersect." in
     Arg.(value & flag & info ["no-intersect"] ~doc)
   in
-  Cmd.v (Cmd.info "results" ~doc:"Compute results") @@
+  Cmd.v (Cmd.info "results" ~doc:"Compute contact results") @@
   let+ out_fmt and+ obs_dir and+ outf and+ no_isect and+ t_scale
   and+ t_min_max_distance and+ contact_spec in
   results ~out_fmt ~obs_dir ~outf ~no_isect
