@@ -37,3 +37,7 @@ val to_csv :
 val stable_contact_distances_to_csv :
   normalize:bool -> headers:bool -> obs:Observation.t -> t:Cell.Group.t ->
   contacts:Cell.Contact.t list Cell.Group.data -> string
+
+val stable_contact_distances_to_json_objs :
+  normalize:bool -> obs:Observation.t -> t:Cell.Group.t ->
+  contacts:Cell.Contact.t list Cell.Group.data -> string list

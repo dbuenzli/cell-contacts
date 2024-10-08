@@ -323,3 +323,48 @@ let stable_contact_distances_to_csv
     List.iteri (add_contact b cell) (List.filter is_stable contacts.(i));
   done;
   Buffer.contents b
+
+let stable_contact_distances_to_json_objs
+    ~normalize ~obs ~t:cells ~contacts =
+  let acc = ref [] in
+  let add_float_array b a =
+    let max = Array.length a - 1 in
+    begin
+      Buffer.add_char b '[';
+      for i = 0 to max do
+        let v = Printf.sprintf "%.16f" a.(i) in
+        let v = if v = "nan" then "null" else v in
+        Buffer.add_string b v;
+        if i <> max then Buffer.add_char b ',';
+      done;
+      Buffer.add_char b ']';
+    end
+  in
+  let b = Buffer.create 5000 in
+  let max = Array.length cells - 1 in
+  for i = 0 to max do
+    let add_contact b cell i contact =
+      let start_frame = contact.Cell.Contact.start_frame in
+      let len = Array.length contact.overlaps in
+      let ds = Cell.distances_to_start_frame
+          cell ~normalize ~start_frame ~len
+      in
+      Buffer.add_string b "{\"cell\":";
+      Buffer.add_char b '\"';
+      Buffer.add_string b (cell_id obs cell.Cell.track_id);
+      Buffer.add_char b '\"';
+      Buffer.add_char b ',';
+      Buffer.add_string b "\"ctx\":";
+      Buffer.add_string b (string_of_int (i + 1));
+      Buffer.add_char b ',';
+      Buffer.add_string b "\"distances\":";
+      add_float_array b ds;
+      Buffer.add_char b '}';
+      acc := (Buffer.contents b) :: !acc;
+      Buffer.reset b
+    in
+    let cell = cells.(i) in
+    let is_stable c = c.Cell.Contact.kind = `Stable in
+    List.iteri (add_contact b cell) (List.filter is_stable contacts.(i));
+  done;
+  List.rev !acc

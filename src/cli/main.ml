@@ -74,7 +74,7 @@ let results
           let* () = to_pdf ~outf obs target t isect in
           Ok 0
       end
-  | `Csv | `Csv_dist as fmt ->
+  | `Csv | `Csv_dist | `Json_dist as fmt ->
       let rec add_obs ~headers acc = function
       | [] -> acc
       | obs :: obss ->
@@ -100,6 +100,11 @@ let results
                 let normalize = not no_normalize in
                 Results.stable_contact_distances_to_csv
                   ~normalize ~headers ~obs ~t ~contacts
+            | `Json_dist ->
+                let normalize = not no_normalize in
+                String.concat ",\n" @@
+                Results.stable_contact_distances_to_json_objs
+                  ~normalize ~obs ~t ~contacts
             in
             Ok res
           in
@@ -108,7 +113,11 @@ let results
       let* res = try Ok (add_obs ~headers:true [] obss) with
       | Failure e -> Error e
       in
-      let res = String.concat "" (List.rev res) in
+      let res =
+        if fmt = `Json_dist
+        then String.concat "" ["[\n"; String.concat "," (List.rev res); "]\n"]
+        else String.concat "" (List.rev res)
+      in
       let* () = Os.File.write ~force:false ~make_path:true outf res in
       Ok 0
 
@@ -204,7 +213,8 @@ let contact_spec =
 
 let results =
   let out_fmt =
-    let fmts = [ "pdf", `Pdf; "csv", `Csv; "csv-dist", `Csv_dist] in
+    let fmts = [ "pdf", `Pdf; "csv", `Csv; "csv-dist", `Csv_dist;
+                 "json-dist", `Json_dist; ] in
     let doc =
       Fmt.str "Output format. Must be %s." (Arg.doc_alts_enum fmts)
     in
