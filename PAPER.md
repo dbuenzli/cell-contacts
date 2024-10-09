@@ -1,4 +1,3 @@
-
 # Contact determination
 
 The analysis is performed on the data provided by the trackmate `.xml`

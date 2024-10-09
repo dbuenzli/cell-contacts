@@ -1,4 +1,5 @@
-
+v0.0.8 2024-10-08
+-----------------
 
 * New file naming convention for observations. Rather than having one 
   directory per observation we simply lookup two matching `$ID-t.xml` and
@@ -9,10 +10,10 @@
 
 * Change the blank defaults in the UI and on the command line to those given
   by Vincent. Namely, T scale factor: 1.5, T dead limit 15, contact
-  min frames: 3, contact min overlap 10%, contact frame gap: 1.
+  min frames: 3, contact min overlap 10%, contact frame gap: 1. 
 
-* Add distance to first stable contact point computations. Can be downloaded
-  from the UI as a `$ID-distances.csv` file.
+* Add normalized distance to first stable contact point computations. Can be 
+  downloaded from the UI as a `$ID-distances.csv` file.
 
 * Allow to generate CSV files from the command line.
 
