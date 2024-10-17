@@ -133,3 +133,9 @@ val distances_to_start_frame :
 (** [distances_to_start_frame c ~start_frame ~len] computes
     in frame \[[start_frame]; [start_frame + len - 1]\] the distance
     of [c] to the position it had in [start_frame]. *)
+
+val contact_stats :
+  Trackmate.t -> t -> Contact.t list -> (float * int) option
+(** [contact_max_dist tm c cs] is the maximal {!distances_to_start_frame}
+    of the first stable contact and the number of frames it took to get
+    there. *)

@@ -189,8 +189,24 @@ let id =
 let contacts =
   { name = "Contacts"; name_th = ""; href = None;
     enc = int_opt_enc;
-    get = (fun _ _ _ _ c ->
-        Option.map (fun c -> fst (Cell.Contact.count_stable_transient c)) c); }
+    get = (fun _ _ _ _ cs ->
+        Option.map (fun c -> fst (Cell.Contact.count_stable_transient c)) cs); }
+
+let contact_max_dist =
+  { name = "Ctc. max dist."; name_th = ""; href = None;
+    enc = float_opt_enc;
+    get = (fun _ tm cell _ cs ->
+        Option.join @@
+        Option.map (fun cs ->
+            Option.map fst (Cell.contact_stats tm cell cs)) cs)}
+
+let contact_max_dist_frame =
+  { name = "Ctc. max dist. (fr.)."; name_th = ""; href = None;
+    enc = int_opt_enc;
+    get = (fun _ tm cell _ cs ->
+        Option.join @@
+        Option.map (fun cs ->
+            Option.map snd (Cell.contact_stats tm cell cs)) cs)}
 
 let transient =
   { name = "Transient"; name_th = ""; href = None;
@@ -229,6 +245,8 @@ let mean_speed_no_contact =
 let cols =
   [ C id;
     C contacts;
+    C contact_max_dist;
+    C contact_max_dist_frame;
     C transient;
     C targets_visited;
     C mean_speed_stable_contact;

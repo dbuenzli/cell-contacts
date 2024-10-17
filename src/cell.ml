@@ -366,3 +366,24 @@ let distances_to_start_frame ~normalize cell ~start_frame ~len =
   let max = Array.fold_left Float.max_num Float.min_float a in
   Array.map_inplace (fun v -> v /. max) a;
   a
+
+let contact_stats tm cell cs =
+  let stable_contact c = match c.Contact.kind with
+  | `Stable -> true | `Transient  -> false
+  in
+  match List.find_opt stable_contact cs with
+  | None -> None
+  | Some contact ->
+      let start_frame = contact.Contact.start_frame in
+      let len = Array.length contact.Contact.overlaps in
+      let ds =
+        distances_to_start_frame
+          cell ~normalize:false ~start_frame ~len
+      in
+      let max_d = ref Float.nan in
+      let k = ref (-1) in
+      for i = 0 to Array.length ds - 1 do
+        let max = Float.max_num !max_d ds.(i) in
+        if not (Float.equal max !max_d) then (max_d := max; k := i)
+      done;
+      Some (!max_d, !k)
