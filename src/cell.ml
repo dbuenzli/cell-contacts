@@ -182,13 +182,12 @@ module Contact = struct
   let frame_range c =
     (c.start_frame, c.start_frame + Array.length c.overlaps - 1)
 
-  let sort_by_increasing_dur c0 c1 =
+  let sort_by_decreasing_dur c0 c1 =
     -1 * (Int.compare (Array.length c0.overlaps) (Array.length c1.overlaps))
 
   let isect_area isect = (* FIXME Pgon2 *)
     let add c acc = Float.abs (Gg_kit.Ring2.area c) +. acc in
     (Gg_kit.Pgon2.fold_rings add isect 0.)
-
 
   let distances_to_start_frame ~normalize cell ~start_frame ~len =
     let a = Array.init len @@ fun i ->
@@ -212,16 +211,14 @@ module Contact = struct
     done;
     !k
 
-  let finish_contact spec contacts tcell target start_frame overlaps =
+  let finish_contact spec tcell target start_frame overlaps =
     let overlaps = Array.of_list (List.rev overlaps) in
+    let len = Array.length overlaps in
     let distances =
-      distances_to_start_frame ~normalize:false tcell
-        ~start_frame ~len:(Array.length overlaps)
+      distances_to_start_frame ~normalize:false tcell ~start_frame ~len
     in
     let distance_max = find_max_distance_index distances in
-    contacts := { target; start_frame; overlaps; distances; distance_max;
-                  dropped = 0 } ::
-                !contacts
+    { target; start_frame; overlaps; distances; distance_max; dropped = 0 }
 
   let find spec ~t ~target ~isects =
     let cell_contacts t target isects i =
@@ -265,21 +262,17 @@ module Contact = struct
                 end
           done;
       done;
-      let contacts = Stdlib.ref [] in
-      let finish target (_, start_frame, overlaps) =
-        finish_contact spec contacts cell target start_frame overlaps
+      let finish target (_, start_frame, overlaps) acc =
+        finish_contact spec cell target start_frame overlaps :: acc
       in
-      Imap.iter finish !active; active := Imap.empty;
-      let cs = List.rev !contacts in
-      match cs with
+      match Imap.fold finish !active [] with
       | [] -> None
-      | [c] -> Some c
+      | [contact] -> Some contact
       | cs ->
-          let cs = List.sort sort_by_increasing_dur cs in
+          let cs = List.sort sort_by_decreasing_dur cs in
           let count = List.length cs in
           let dropped = count - 1 in
-          let c = List.hd cs in
-          Some ({c with dropped})
+          Some ({ (List.hd cs) with dropped})
     in
     Array.init (Array.length t) (cell_contacts t target isects)
 
