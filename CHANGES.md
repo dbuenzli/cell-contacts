@@ -1,4 +1,5 @@
-
+v0.0.9 2024-10-18
+-----------------
 
 * New contact definition. Get rid of the notion of stable/transient
   contact.  There is a single contact and it lasts from some frame
@@ -15,9 +16,9 @@
 * Everything is shown in `s` in the UI and in the csv results so 
   that things can be easily correlated if manual inspection is needed.
 
-* Checks that all trackmate files have microns and seconds units.
+* Check that all trackmate files have microns and seconds units.
   The frame interval is allowed to change between observations but 
-  not in pair T-cell/target trackmate paired files.
+  not in pairs of T-cell/target trackmate files.
 
 v0.0.8 2024-10-08
 -----------------
