@@ -89,16 +89,16 @@ let number_complex =
 (* Track duration *)
 
 let track_duration =
-  { name = "Duration"; name_th = "Duration (s)";
+  { name = "Duration"; name_th = "Duration (fr.)";
     href = href "Duration_of_track.";
     enc = time_enc; get = (fun _ _ _ t _ -> t.track_duration); }
 
 let track_start =
-  { name = "Start"; name_th = "Start (s)"; href = href "Track_start.";
+  { name = "Start"; name_th = "Start (fr.)"; href = href "Track_start.";
     enc = time_enc; get = (fun _ _ _ t _ -> t.track_start); }
 
 let track_stop =
-  { name = "Stop"; name_th = "Stop (s)"; href = href "Track_stop.";
+  { name = "Stop"; name_th = "Stop (fr.)"; href = href "Track_stop.";
     enc = time_enc; get = (fun _ _ _ t _ -> t.track_stop); }
 
 let track_displacement =

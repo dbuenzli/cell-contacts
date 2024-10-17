@@ -1,3 +1,12 @@
+
+
+* Column labelling in `.csv` file. Correct labelling for track timings. 
+  In contrast to what TrackMate's docs say [here][tmdocs]. The time numbers 
+  are in frame counts, not in physical units.
+
+[tmdocs]: https://imagej.net/imagej-wiki-static/TrackMate_Algorithms.html#Track_duration_analyzer.
+
+
 v0.0.8 2024-10-08
 -----------------
 
