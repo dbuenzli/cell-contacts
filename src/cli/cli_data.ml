@@ -25,15 +25,18 @@ let add_target id file m =
   String.Map.update id upd m
 
 let find_file_pairs files =
+  let warn file =
+    Log.warn (fun m -> m "Don't know what to do with %a" Fpath.pp file)
+  in
   let find acc file =
-    if not (Fpath.has_ext ".xml" file) then acc else
+    if not (Fpath.has_ext ".xml" file) then (warn file; acc) else
     let fname = Fpath.basename file in
     match Observation.is_t_filename fname with
     | Some id -> add_t id file acc
     | None ->
         match Observation.is_target_filename fname with
         | Some id -> add_target id file acc
-        | None -> acc
+        | None -> warn file; acc
   in
   List.fold_left find String.Map.empty files
 
@@ -51,16 +54,20 @@ let read_trackmate ~kind file =
       Result.map Option.some @@ Trackmate_xmlm.of_file (Fpath.to_string file)
 
 let load_observations dir =
-  try
-    let* m = find_observations_in_dir dir in
-    let add id { t; target } acc  =
-      let o =
-        Result.error_to_failure @@
-        let* t = read_trackmate ~kind:"T" t in
-        let* target = read_trackmate ~kind:"target" target in
-        Observation.v ~id ~t ~target
-      in
-      o :: acc
+  time begin fun obs m -> match obs with
+  | Ok obs ->
+      m "Read %d observations from %a" (List.length obs) Fpath.pp dir
+  | _ -> obs
+  end @@ fun () ->
+  let* m = find_observations_in_dir dir in
+  let add id { t; target } acc  =
+    let o =
+      let* t = read_trackmate ~kind:"T" t in
+      let* target = read_trackmate ~kind:"target" target in
+      Observation.v ~id ~t ~target
     in
-    Ok (String.Map.fold add m [])
-  with Failure e -> Error e
+    match o with
+    | Error e -> Log.err (fun m -> m "%s" e); acc
+    | Ok o -> o :: acc
+  in
+  Ok (String.Map.fold add m [])

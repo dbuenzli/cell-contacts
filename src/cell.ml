@@ -59,8 +59,12 @@ let frames_of_track ?scale (tm : Trackmate.t) (track : Trackmate.track) =
     | None -> frames.(s.frame) <- Some (spot_of_tm_spot ?scale s)
     | Some s' when s'.spot_id = s.sid -> ()
     | Some s' ->
-        Fmt.failwith "Track %d: frame %d: two spots %d and %d"
-          track.tid s.frame s.sid s'.spot_id
+        (* We should use logger but we didn't abstract it over
+           backends. *)
+        Printf.eprintf
+          "%s: Track %d: frame %d: has more than one spot: %d and %d\n%!"
+          tm.file track.tid s.frame s.sid s'.spot_id;
+        ()
   in
   let add_edge tm frames (e : Trackmate.edge) =
     add_spot frames (find_spot tm track.tid e.spot_source_id);
@@ -110,7 +114,7 @@ module Group = struct
            Fmt.lines msg c0 dump_pgon p0.pgon c1 dump_pgon p1.pgon *)
         msg
     in
-    Fmt.epr "Warning: frame %d: cells %d %d: %a@." f c0 c1 Fmt.lines msg
+    Fmt.epr "Warning: Frame %d: Cells %d %d: %a@." f c0 c1 Fmt.lines msg
 
   let intersections g0 g1 =
     let errs = Stdlib.ref 0 in

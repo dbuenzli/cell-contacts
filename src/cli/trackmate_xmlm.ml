@@ -26,23 +26,33 @@ let spot_contour_of_children = function
     | [] -> List.rev acc
     | x :: y :: l ->
         loop ((P2.v (float_of_string x) (float_of_string y)) :: acc) l
-    | _ -> failwith "Spot contour: even number of coordinates"
+    | _ -> failwith "Contour: even number of coordinates"
     in
     loop [] (String.split_on_char ' ' points)
-| _ -> failwith "Spot: could not parse contour"
+| [] -> [] (* This happens sometimes *)
+| cs ->
+    let err =
+      let is_d = function D _ -> true | _ -> false in
+      if List.for_all is_d cs then " (unexpected multiple data nodes)" else
+      " (unexpected elements)"
+    in
+    Fmt.failwith "Contour: Could not parse%s" err
 
 let spot_of_el (_, atts) cs =
   try
     let m = att_map atts in
     let sid = get_att int_of_string "ID" m in
-    let frame = get_att int_of_string "FRAME" m in
-    let area = get_att float_of_string "AREA" m in
-    let posx = get_att float_of_string "POSITION_X" m in
-    let posy = get_att float_of_string "POSITION_Y" m in
-    let radius = get_att float_of_string "RADIUS" m in
-    let pos = P2.v posx posy in
-    let contour = spot_contour_of_children cs in
-    { Trackmate.sid; frame; area; pos; radius; contour }
+    try
+      let frame = get_att int_of_string "FRAME" m in
+      let area = get_att float_of_string "AREA" m in
+      let posx = get_att float_of_string "POSITION_X" m in
+      let posy = get_att float_of_string "POSITION_Y" m in
+      let radius = get_att float_of_string "RADIUS" m in
+        let pos = P2.v posx posy in
+      let contour = spot_contour_of_children cs in
+      { Trackmate.sid; frame; area; pos; radius; contour }
+    with
+    | Failure e -> Fmt.failwith "Spot ID %d: %s" sid e
   with
   | Failure e -> Fmt.failwith "Spot: %s" e
 
@@ -205,7 +215,7 @@ let of_string ?(file = "-") src =
          file; spots_by_id = !spot_by_id; tracks_by_id = !track_by_id;
          filtered_tracks = !filtered_tracks }
   with
-  | Failure e -> Fmt.failwith "%s: %s" file e
+  | Failure e -> Fmt.error "%s: %s" file e
   | Xmlm.Error ((l, c), e) ->
       Fmt.error "%s:%d:%d: %s" file l c (Xmlm.error_message e)
 

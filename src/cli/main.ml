@@ -75,11 +75,10 @@ let results
           Ok 0
       end
   | `Csv | `Csv_dist | `Json_dist as fmt ->
-      let rec add_obs ~headers acc = function
-      | [] -> acc
+      let rec add_obs ~err ~headers acc = function
+      | [] -> err, acc
       | obs :: obss ->
           let res =
-            Result.error_to_failure @@
             let* t, target, isect =
               intersections no_isect obs ~t_scale ~t_min_max_distance
             in
@@ -94,32 +93,40 @@ let results
             | Some (isects, _errs) -> Ok isects
             in
             let contacts = Cell.Contact.find contact_spec ~t ~target ~isects in
-            let res = match fmt with
-            | `Csv -> Results.to_csv ~headers ~obs ~t ~contacts:(Some contacts)
+            match fmt with
+            | `Csv ->
+                Ok (Results.to_csv ~headers ~obs ~t ~contacts:(Some contacts))
             | `Csv_dist ->
                 let normalize = not no_normalize in
-                Results.stable_contact_distances_to_csv
-                  ~normalize ~headers ~obs ~t ~contacts
+                Ok (Results.stable_contact_distances_to_csv
+                      ~normalize ~headers ~obs ~t ~contacts)
             | `Json_dist ->
                 let normalize = not no_normalize in
-                String.concat ",\n" @@
+                Result.ok @@ String.concat ",\n" @@
                 Results.stable_contact_distances_to_json_objs
                   ~normalize ~obs ~t ~contacts
-            in
-            Ok res
           in
-          add_obs ~headers:false (res :: acc) obss
+          match res with
+          | Error e ->
+              Log.err (fun m -> m "%s : %s" (Observation.id obs) e);
+              add_obs ~err:true ~headers:false acc obss
+          | Ok res ->
+          add_obs ~err ~headers:false (res :: acc) obss
       in
-      let* res = try Ok (add_obs ~headers:true [] obss) with
-      | Failure e -> Error e
-      in
+      let err, res =
+        time begin fun (_, res) m ->
+          m "Processed %d observations from %a" (List.length res) Fpath.pp dir
+        end @@ fun () ->
+        add_obs ~err:false ~headers:true [] obss in
       let res =
         if fmt = `Json_dist
         then String.concat "" ["[\n"; String.concat "," (List.rev res); "]\n"]
         else String.concat "" (List.rev res)
       in
       let* () = Os.File.write ~force:false ~make_path:true outf res in
-      Ok 0
+      if err
+      then (Log.warn (fun m -> m "Errors occured"); Ok 1)
+      else Ok 0
 
 let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
   let iter_results tm cells contacts f =
