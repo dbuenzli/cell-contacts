@@ -53,7 +53,7 @@ type 'a col =
     enc : 'a enc;
     get :
       Observation.t -> Trackmate.t ->
-      Cell.t -> Trackmate.track -> Cell.Contact.t list option -> 'a }
+      Cell.t -> Trackmate.track -> Cell.Contact.t option option -> 'a }
 
 type ecol = C : 'a col -> ecol
 
@@ -186,71 +186,79 @@ let id =
     name_th = ""; href = href "Track_ID.";
     enc = string_enc; get = (fun obs _ _ t _ -> cell_id obs t.tid) }
 
+(* Contact *)
+
 let contacts =
-  { name = "Contacts"; name_th = ""; href = None;
+  { name = "Ctcs"; name_th = ""; href = None;
+    enc = int_enc;
+    get = fun _ _ _ _ c ->
+      let count c = c.Cell.Contact.dropped + 1 in
+      Option.value ~default:0 (Option.map count (Option.join c)) }
+
+let contact_start =
+  { name = "Ctc start (fr.)"; name_th = ""; href = None;
     enc = int_opt_enc;
-    get = (fun _ _ _ _ cs ->
-        Option.map (fun c -> fst (Cell.Contact.count_stable_transient c)) cs); }
+    get = fun _ _ _ _ c ->
+      let start_frame c = c.Cell.Contact.start_frame in
+      Option.map start_frame (Option.join c) }
+
+let contact_len =
+  { name = "Ctc dur (fr.)"; name_th = ""; href = None;
+    enc = int_opt_enc;
+    get = fun _ _ _ _ c ->
+      let dur c = Array.length c.Cell.Contact.overlaps in
+      Option.map dur (Option.join c); }
 
 let contact_max_dist =
-  { name = "Ctc. max dist."; name_th = ""; href = None;
+  { name = "Ctc max dist."; name_th = ""; href = None;
     enc = float_opt_enc;
-    get = (fun _ tm cell _ cs ->
-        Option.join @@
-        Option.map (fun cs ->
-            Option.map fst (Cell.contact_stats tm cell cs)) cs)}
+    get = fun _ _ _ _ c ->
+      let max c = c.Cell.Contact.distances.(c.Cell.Contact.distance_max) in
+      Option.map max (Option.join c) }
 
-let contact_max_dist_frame =
-  { name = "Ctc. max dist. (fr.)."; name_th = ""; href = None;
+let contact_dur_to_max_dist =
+  { name = "Ctc dur to max dist. (fr.)"; name_th = ""; href = None;
     enc = int_opt_enc;
-    get = (fun _ tm cell _ cs ->
-        Option.join @@
-        Option.map (fun cs ->
-            Option.map snd (Cell.contact_stats tm cell cs)) cs)}
-
-let transient =
-  { name = "Transient"; name_th = ""; href = None;
-    enc = int_opt_enc;
-    get = (fun _ _ _ _ c ->
-        Option.map (fun c -> snd (Cell.Contact.count_stable_transient c)) c) }
-
-let targets_visited =
-  { name = "Tgt visited"; name_th = ""; href = None;
-    enc = int_opt_enc;
-    get = (fun _ _ _ _ c -> Option.map Cell.Contact.unique_stable_count c) }
+    get = fun _ tm cell _ c ->
+      let dur c = c.Cell.Contact.distance_max in
+      Option.map dur (Option.join c)}
 
 let our_track_mean_speed =
   { name = "Mean sp. (ctrl)"; name_th = ""; href = None;
     enc = float_enc;
     get = (fun _ tm c _ _ -> Cell.mean_speed tm c); }
 
-let mean_speed_stable_contact =
-  { name = "Mean sp. stbl."; name_th = ""; href = None;
+let mean_speed_contact =
+  { name = "Mean sp. ctc"; name_th = ""; href = None;
     enc = float_opt_enc;
     get = (fun _ tm cell _ cs ->
-        Option.map (Cell.mean_speed_stable_contact tm cell) cs) }
-
-let mean_speed_transient_contact =
-  { name = "Mean sp. trnst."; name_th = ""; href = None;
-    enc = float_opt_enc;
-    get = (fun _ tm cell _ cs ->
-        Option.map (Cell.mean_speed_transient_contact tm cell) cs) }
+        Option.map (Cell.mean_speed_contact tm cell) (Option.join cs)) }
 
 let mean_speed_no_contact =
-  { name = "Mean sp. no ctc."; name_th = ""; href = None;
+  (* Note if there is no contact this should be equal to track_mean_speed *)
+  { name = "Mean sp. no ctc"; name_th = ""; href = None;
     enc = float_opt_enc;
     get = (fun _ tm cell _ cs ->
-        Option.map (Cell.mean_speed_no_contact tm cell) cs) }
+        Option.map (Cell.mean_speed_no_contact tm cell) (Option.join cs)) }
+
+let time_unit =
+  { name = "Time unit"; name_th = ""; href = None;
+    enc = string_enc;
+    get = (fun obs _ _ _ _ -> Observation.time_unit obs) }
+
+let time_interval =
+  { name = "Time interval"; name_th = ""; href = None;
+    enc = float_enc;
+    get = (fun obs _ _ _ _ -> Observation.time_interval obs) }
 
 let cols =
   [ C id;
     C contacts;
+    C contact_start;
+    C contact_len;
     C contact_max_dist;
-    C contact_max_dist_frame;
-    C transient;
-    C targets_visited;
-    C mean_speed_stable_contact;
-    C mean_speed_transient_contact;
+    C contact_dur_to_max_dist;
+    C mean_speed_contact;
     C mean_speed_no_contact;
 (*    C our_track_mean_speed; *)
     C track_mean_speed;
@@ -271,6 +279,8 @@ let cols =
     C track_x_location; C track_y_location; C track_z_location;
     (* Spot quality *)
     C track_mean_quality;
+    C time_unit;
+    C time_interval;
  ]
 
 let to_csv ~headers ~obs ~t:cells ~contacts =
@@ -302,8 +312,14 @@ let to_csv ~headers ~obs ~t:cells ~contacts =
   done;
   Buffer.contents b
 
-let stable_contact_distances_to_csv
-    ~normalize ~headers ~obs ~t:cells ~contacts =
+let get_distances ~normalize contact =
+  if not normalize then contact.Cell.Contact.distances else
+  let max_d =
+    contact.Cell.Contact.distances.(contact.Cell.Contact.distance_max)
+  in
+  Array.map (fun v -> v /. max_d) contact.Cell.Contact.distances
+
+let contact_distances_to_csv ~normalize ~headers ~obs ~t:cells ~contacts =
   let add_float_array b a =
     let max = Array.length a - 1 in
     if max < 0 then () else
@@ -316,34 +332,28 @@ let stable_contact_distances_to_csv
     end
   in
   let add_headers b =
-    Buffer.add_string b "cell";
+    Buffer.add_string b "Id";
     Buffer.add_char b ',';
-    Buffer.add_string b "ctc";
+    Buffer.add_string b "Ctx start (fr.)";
     Buffer.add_string b "\r\n";
   in
   let b = Buffer.create 5000 in
   if headers then add_headers b;
   for i = 0 to Array.length cells - 1 do
-    let add_contact b cell i contact =
-      let start_frame = contact.Cell.Contact.start_frame in
-      let len = Array.length contact.overlaps in
-      let ds = Cell.distances_to_start_frame
-          cell ~normalize ~start_frame ~len
-      in
-      Buffer.add_string b (cell_id obs cell.Cell.track_id);
-      Buffer.add_char b ',';
-      Buffer.add_string b (string_of_int (i + 1));
-      add_float_array b ds;
-      Buffer.add_string b "\r\n";
-    in
     let cell = cells.(i) in
-    let is_stable c = c.Cell.Contact.kind = `Stable in
-    List.iteri (add_contact b cell) (List.filter is_stable contacts.(i));
+    match contacts.(i) with
+    | None -> ()
+    | Some contact ->
+        let ds = get_distances ~normalize contact in
+        Buffer.add_string b (cell_id obs cell.Cell.track_id);
+        Buffer.add_char b ',';
+        Buffer.add_string b (string_of_int contact.Cell.Contact.start_frame);
+        add_float_array b ds;
+        Buffer.add_string b "\r\n";
   done;
   Buffer.contents b
 
-let stable_contact_distances_to_json_objs
-    ~normalize ~obs ~t:cells ~contacts =
+let contact_distances_to_json_objs ~normalize ~obs ~t:cells ~contacts =
   let acc = ref [] in
   let add_float_array b a =
     let max = Array.length a - 1 in
@@ -361,28 +371,23 @@ let stable_contact_distances_to_json_objs
   let b = Buffer.create 5000 in
   let max = Array.length cells - 1 in
   for i = 0 to max do
-    let add_contact b cell i contact =
-      let start_frame = contact.Cell.Contact.start_frame in
-      let len = Array.length contact.overlaps in
-      let ds = Cell.distances_to_start_frame
-          cell ~normalize ~start_frame ~len
-      in
-      Buffer.add_string b "{\"cell\":";
-      Buffer.add_char b '\"';
-      Buffer.add_string b (cell_id obs cell.Cell.track_id);
-      Buffer.add_char b '\"';
-      Buffer.add_char b ',';
-      Buffer.add_string b "\"ctx\":";
-      Buffer.add_string b (string_of_int (i + 1));
-      Buffer.add_char b ',';
-      Buffer.add_string b "\"distances\":";
-      add_float_array b ds;
-      Buffer.add_char b '}';
-      acc := (Buffer.contents b) :: !acc;
-      Buffer.reset b
-    in
     let cell = cells.(i) in
-    let is_stable c = c.Cell.Contact.kind = `Stable in
-    List.iteri (add_contact b cell) (List.filter is_stable contacts.(i));
+    match contacts.(i) with
+    | None -> ()
+    | Some contact ->
+        let ds = get_distances ~normalize contact in
+        Buffer.add_string b "{\"cell\":";
+        Buffer.add_char b '\"';
+        Buffer.add_string b (cell_id obs cell.Cell.track_id);
+        Buffer.add_char b '\"';
+        Buffer.add_char b ',';
+        Buffer.add_string b "\"Ctx start (fr.)\":";
+        Buffer.add_string b (string_of_int contact.Cell.Contact.start_frame);
+        Buffer.add_char b ',';
+        Buffer.add_string b "\"distances\":";
+        add_float_array b ds;
+        Buffer.add_char b '}';
+        acc := (Buffer.contents b) :: !acc;
+        Buffer.reset b
   done;
   List.rev !acc

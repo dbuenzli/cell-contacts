@@ -1,11 +1,22 @@
 
 
-* Column labelling in `.csv` file. Correct labelling for track timings. 
-  In contrast to what TrackMate's docs say [here][tmdocs]. The time numbers 
-  are in frame counts, not in physical units.
+* New contact definition. Get rid of the notion of stable/transient
+  contact.  There is a single contact and it lasts from some frame
+  until the end of the observation. If this happens for more than one
+  target cell (may happen), the longest one is taken. We still record
+  the fact that there was more than one in the `Ctcs` column.
 
-[tmdocs]: https://imagej.net/imagej-wiki-static/TrackMate_Algorithms.html#Track_duration_analyzer.
+* Results file. Removed column `Contacts`, `Transient`, `Tgt visited`
+  `Mean sp. stbl`, `Mean sp. transt.`.
 
+* Results file. Added columns `Ctcs`, `Ctc start (fr.)`, `Ctc dur (fr.)`, 
+  `Ctc max dist`, `Ctc max dist dur (fr.)`, `Mean sp. ctc` for contacts.
+
+* Results. Timings, no longer distinguish between the app table and
+  the csv table. Everything is expressed in frames and we added `Time
+  unit` and `Time interval` columns to allow converting frames to
+  physical units for comparisons (frame information is directly
+  comparable if all lines have the same values for these columns).
 
 v0.0.8 2024-10-08
 -----------------

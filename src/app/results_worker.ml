@@ -27,7 +27,7 @@ type 'a work =
     Cell.Group.t * Cell.Group.t ->
     (Cell.Group.intersections * int, string) result work
 | Cell_contacts :
-    Cell.Contact.spec -> Cell.Contact.t list Cell.Group.data option work
+    Cell.Contact.spec -> Cell.Contact.t option Cell.Group.data option work
 
 let timer tag = let tag = Jstr.v tag in Console.time tag; tag
 

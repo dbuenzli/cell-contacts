@@ -12,24 +12,23 @@ each frame. First we pre-process the data of the T cells:
    distance travelled is smaller than a fixed distance **d**.
    
 We then proceed to compute polygon intersections between T cells and
-target cells at each frame. A *contact* is defined as any non-empty 
+target cells at each frame. A *touch* is defined as any non-empty
 intersection between the polygon of the target cell and the polygon of
-the T cell whose surface is at least XX% of the surface of the T cell. 
+the T cell whose surface is at least XX% of the surface of the T cell.
 
-We say that a contact is *stable* if there is a contact between a T
-cell and a target cell during at least **N** consecutive
-frames. Otherwise the contact is said to be *transient*. A stable
-contact lasts until the cells no longer intersect. However sometimes
-the T cell flickers or contact is made on the side of cells and is
-slightly unstable. To account for these situations and count them as a
-single stable contact, we keep the stable contact even if they may
-have up to **DG** frame gaps of contact loss after the initial N
-consecutive frames.
+There is a *contact* between a T cell and a target cell once there is
+a touch between them and that they touch until the end of the
+acquisition. To account for the fact that sometimes T cell flicker or
+contact is made on the side of cells and is slightly unstable we keep
+the contact if there may have up to **DG** frame gaps of touch loss.
 
-# Stable contact distances
+If it happens that a T cell is in contact with more than one target
+cell at the end of the acquisition, we take the longest contact.
 
-For each frame of a stable contact we compute the distance between the
-t cell and the position where it was at the first frame of the
-contact. To make it easier to compare these values across cells we
-normalize these values on their maxima.
+# Contact distances
+
+For each contact we compute at each frame of the contact the distance
+between the T cell and the position it had on the first touch. We keep
+track of this maximal value and the time it takes to to get to this
+maximal value.
 

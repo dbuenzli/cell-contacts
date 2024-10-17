@@ -98,12 +98,12 @@ let results
                 Ok (Results.to_csv ~headers ~obs ~t ~contacts:(Some contacts))
             | `Csv_dist ->
                 let normalize = not no_normalize in
-                Ok (Results.stable_contact_distances_to_csv
+                Ok (Results.contact_distances_to_csv
                       ~normalize ~headers ~obs ~t ~contacts)
             | `Json_dist ->
                 let normalize = not no_normalize in
                 Result.ok @@ String.concat ",\n" @@
-                Results.stable_contact_distances_to_json_objs
+                Results.contact_distances_to_json_objs
                   ~normalize ~obs ~t ~contacts
           in
           match res with
@@ -148,7 +148,6 @@ let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
   | Some target_tm, Some t_tm ->
       Printf.printf "scale: %f\n" scale;
       Printf.printf "min-max-distance: %f\n" min_max_distance;
-      Printf.printf "min-frame-count: %d\n" contact_spec.min_frame_count;
       Printf.printf "min-overlap: %d%%\n" contact_spec.min_overlap_pct;
       Printf.printf "allowed-gap: %d\n" contact_spec.allowed_overlap_gap_length;
       let* target = Cell.Group.of_trackmate target_tm in
@@ -158,16 +157,15 @@ let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
       if err <> 0 then Printf.eprintf "Isect errors: %d" err;
       (iter_results t_tm t contacts @@ fun tm i c track contacts ->
        let print_result tm i c track contacts =
+         (*
          let cms = Cell.mean_speed tm c in
          let tm_cms = track.Trackmate.track_mean_speed in
-         let visited = Cell.Contact.unique_stable_count contacts in
-         let ms_stbl = Cell.mean_speed_stable_contact tm c contacts in
-         let _ms_tr = Cell.mean_speed_transient_contact tm c contacts in
          let ms_no = Cell.mean_speed_no_contact tm c contacts in
-    (*     if ms_stbl <> 0. then *)
+         if ms_stbl <> 0. then
            Printf.printf "%03d visited:%d cms:%.5f %.5f stbl:%.5f no:%.5f \
                           strange:%b\n"
-             c.track_id visited cms tm_cms ms_stbl ms_no (ms_stbl > ms_no)
+             c.track_id visited cms tm_cms ms_stbl ms_no (ms_stbl > ms_no) *)
+         ()
        in
        match id with
        | None -> print_result tm i c track contacts
@@ -203,11 +201,7 @@ let t_min_max_distance =
        info ["t-dead-limit"] ~doc ~docv:"DIST")
 
 let contact_spec =
-  let+ min_frame_count =
-    let doc = "Min. frames for stable contact." in
-    Arg.(value & opt int Cell.Contact.spec_default.min_frame_count &
-         info ["c-min-frame-count"] ~doc ~docv:"FRAMECOUNT")
-  and+ allowed_overlap_gap_length =
+  let+ allowed_overlap_gap_length =
     let doc = "Allowed overlap gap length." in
     Arg.(value & opt int Cell.Contact.spec_default.allowed_overlap_gap_length &
          info ["c-allowed-gap"] ~doc ~docv:"FRAMECOUNT")
@@ -216,7 +210,7 @@ let contact_spec =
     Arg.(value & opt int Cell.Contact.spec_default.min_overlap_pct &
          info ["c-min-pct"] ~doc ~docv:"PCT")
   in
-  { Cell.Contact.min_frame_count; allowed_overlap_gap_length; min_overlap_pct }
+  { Cell.Contact.allowed_overlap_gap_length; min_overlap_pct }
 
 let results =
   let out_fmt =

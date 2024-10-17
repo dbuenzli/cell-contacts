@@ -76,32 +76,33 @@ end
 
 module Contact : sig
   type spec =
-    { min_frame_count : int;
-      allowed_overlap_gap_length : int;
+    { allowed_overlap_gap_length : int;
       min_overlap_pct : int; }
 
   val spec_default : spec
   (** [spec_default] is the default contact specification. *)
 
   type t =
-    { target : Trackmate.track_id;
-      start_frame : int;
-      overlaps : float Observation.frames; (* Starting at [start_frame] *)
-      kind : [ `Stable | `Transient ] }
+    { target : Trackmate.track_id; (** Intersecting target cell. *)
+      start_frame : int; (** First touch. *)
+      overlaps : float Observation.frames;
+        (** Overlap values, starting at [start_frame] *)
+      distances : float Observation.frames;
+        (** Distance to first touch, starting at [start_frame] *)
+      distance_max : int;
+      (** Index of maximal value in [distance_max]. *)
+      dropped : int;
+      (** Number of alternative that were dropped. Only the longest
+          one is kept. *)}
 
   val find :
-    spec -> t:Group.t -> target:Group.t ->
-    isects:Group.intersections -> t list Group.data
+    spec -> t:Group.t -> target:Group.t -> isects:Group.intersections ->
+    t option Group.data
   (** Data grouped by t cell. *)
 
-  val count_stable_transient : t list -> int * int
-  val unique_stable_count : t list -> int
+  type stats = { num_contacting : int; }
 
-  type stats =
-    { num_contacting : int;
-      max_target_contacts : int; }
-
-  val stats : t list Group.data -> stats
+  val stats : t option Group.data -> stats
 end
 
 (** {1:speeds Computing speeds} *)
@@ -111,31 +112,10 @@ val mean_speed : Trackmate.t -> t -> float
     computed by trackmate. It should yield the same result.
     [tm] is needed to get the time unit. *)
 
-val mean_speed_stable_contact :
-  Trackmate.t -> t -> Contact.t list -> float
-(** [mean_speed_stable_contact tm c] computes the mean speed during stable
-    contacts. *)
+val mean_speed_contact : Trackmate.t -> t -> Contact.t -> float
+(** [mean_speed_stable_contact tm c] computes the mean speed during the
+    contact. *)
 
-val mean_speed_transient_contact :
-  Trackmate.t -> t -> Contact.t list -> float
-(** [mean_speed_stable_contact tm c] computes the mean speed during transient
-    contacts. *)
-
-val mean_speed_no_contact :
-  Trackmate.t -> t -> Contact.t list -> float
+val mean_speed_no_contact : Trackmate.t -> t -> Contact.t -> float
 (** [mean_speed_stable_contact tm c] computes the mean speed when there is
-    not contact. *)
-
-(** {1:distances Computing distances} *)
-
-val distances_to_start_frame :
-  normalize:bool -> t -> start_frame:int -> len:int -> float Observation.frames
-(** [distances_to_start_frame c ~start_frame ~len] computes
-    in frame \[[start_frame]; [start_frame + len - 1]\] the distance
-    of [c] to the position it had in [start_frame]. *)
-
-val contact_stats :
-  Trackmate.t -> t -> Contact.t list -> (float * int) option
-(** [contact_max_dist tm c cs] is the maximal {!distances_to_start_frame}
-    of the first stable contact and the number of frames it took to get
-    there. *)
+    no contact. *)

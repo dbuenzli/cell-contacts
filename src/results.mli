@@ -18,7 +18,7 @@ type 'a col =
     get :
       Observation.t ->
       Trackmate.t ->
-      Cell.t -> Trackmate.track -> Cell.Contact.t list option -> 'a }
+      Cell.t -> Trackmate.track -> Cell.Contact.t option option -> 'a }
 (** The type for column descriptions. How to encode and how to get
     it from the data. *)
 
@@ -31,13 +31,13 @@ val cols : ecol list
 val to_csv :
   headers:bool ->
   obs:Observation.t -> t:Cell.Group.t ->
-  contacts:Cell.Contact.t list Cell.Group.data option -> string
+  contacts:Cell.Contact.t option Cell.Group.data option -> string
 (** [to_csv] renders the results to a CSV file. *)
 
-val stable_contact_distances_to_csv :
+val contact_distances_to_csv :
   normalize:bool -> headers:bool -> obs:Observation.t -> t:Cell.Group.t ->
-  contacts:Cell.Contact.t list Cell.Group.data -> string
+  contacts:Cell.Contact.t option Cell.Group.data -> string
 
-val stable_contact_distances_to_json_objs :
+val contact_distances_to_json_objs :
   normalize:bool -> obs:Observation.t -> t:Cell.Group.t ->
-  contacts:Cell.Contact.t list Cell.Group.data -> string list
+  contacts:Cell.Contact.t option Cell.Group.data -> string list

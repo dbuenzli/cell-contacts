@@ -59,9 +59,7 @@ let frames_of_track ?scale (tm : Trackmate.t) (track : Trackmate.track) =
     | None -> frames.(s.frame) <- Some (spot_of_tm_spot ?scale s)
     | Some s' when s'.spot_id = s.sid -> ()
     | Some s' ->
-        (* We should use logger but we didn't abstract it over
-           backends. *)
-        Printf.eprintf
+        Fmt.epr
           "%s: Track %d: frame %d: has more than one spot: %d and %d\n%!"
           tm.file track.tid s.frame s.sid s'.spot_id;
         ()
@@ -166,47 +164,75 @@ module Imap = Map.Make (Int)
 
 module Contact = struct
   type spec =
-    { min_frame_count : int;
-      allowed_overlap_gap_length : int;
+    { allowed_overlap_gap_length : int;
       min_overlap_pct : int; }
 
   let spec_default =
-    { min_frame_count = 3;
-      allowed_overlap_gap_length = 1;
+    { allowed_overlap_gap_length = 1;
       min_overlap_pct = 10; }
 
   type t =
     { target : Trackmate.track_id;
       start_frame : int;
       overlaps : float Observation.frames;
-      kind : [ `Stable | `Transient ] }
+      distances : float Observation.frames;
+      distance_max : int;
+      dropped : int; }
 
   let frame_range c =
     (c.start_frame, c.start_frame + Array.length c.overlaps - 1)
+
+  let sort_by_increasing_dur c0 c1 =
+    -1 * (Int.compare (Array.length c0.overlaps) (Array.length c1.overlaps))
 
   let isect_area isect = (* FIXME Pgon2 *)
     let add c acc = Float.abs (Gg_kit.Ring2.area c) +. acc in
     (Gg_kit.Pgon2.fold_rings add isect 0.)
 
-  let close_contact spec contacts target start_frame overlaps =
-    let overlaps = Array.of_list (List.rev overlaps) in
-    let kind = match  Array.length overlaps < spec.min_frame_count with
-    | true -> `Transient
-    | false -> `Stable
+
+  let distances_to_start_frame ~normalize cell ~start_frame ~len =
+    let a = Array.init len @@ fun i ->
+      let s0 = cell.frames.(start_frame) in
+      let s1 = cell.frames.(start_frame + i) in
+      match s0, s1 with
+      | None, _ | _, None -> nan
+      | Some s0, Some s1 -> V2.norm V2.(s1.pos - s0.pos)
     in
-    contacts := { target; start_frame; overlaps; kind } :: !contacts
+    if not normalize then a else
+    let max = Array.fold_left Float.max_num Float.min_float a in
+    Array.map_inplace (fun v -> v /. max) a;
+    a
+
+  let find_max_distance_index distances =
+    let max_d = ref Float.nan in
+    let k = ref (-1) in
+    for i = 0 to Array.length distances - 1 do
+      let max = Float.max_num !max_d distances.(i) in
+      if not (Float.equal max !max_d) then (max_d := max; k := i)
+    done;
+    !k
+
+  let finish_contact spec contacts tcell target start_frame overlaps =
+    let overlaps = Array.of_list (List.rev overlaps) in
+    let distances =
+      distances_to_start_frame ~normalize:false tcell
+        ~start_frame ~len:(Array.length overlaps)
+    in
+    let distance_max = find_max_distance_index distances in
+    contacts := { target; start_frame; overlaps; distances; distance_max;
+                  dropped = 0 } ::
+                !contacts
 
   let find spec ~t ~target ~isects =
     let cell_contacts t target isects i =
       let frame_count = Array.length isects in
       let cell = t.(i) in
       let active = Stdlib.ref Imap.empty in
-      let contacts = Stdlib.ref [] in
       let try_stop target = function
       | None -> None
       | Some (allowed_gap, start_frame, overlaps) ->
           if allowed_gap = 0
-          then (close_contact spec contacts target start_frame overlaps; None)
+          then None
           else Some (allowed_gap - 1, start_frame, overlaps)
       in
       let min_overlap_pct = float spec.min_overlap_pct /. 100. in
@@ -239,45 +265,32 @@ module Contact = struct
                 end
           done;
       done;
-      let stop target (_, start_frame, overlaps) =
-        close_contact spec contacts target start_frame overlaps
+      let contacts = Stdlib.ref [] in
+      let finish target (_, start_frame, overlaps) =
+        finish_contact spec contacts cell target start_frame overlaps
       in
-      Imap.iter stop !active; active := Imap.empty;
-      List.rev !contacts
+      Imap.iter finish !active; active := Imap.empty;
+      let cs = List.rev !contacts in
+      match cs with
+      | [] -> None
+      | [c] -> Some c
+      | cs ->
+          let cs = List.sort sort_by_increasing_dur cs in
+          let count = List.length cs in
+          let dropped = count - 1 in
+          let c = List.hd cs in
+          Some ({c with dropped})
     in
     Array.init (Array.length t) (cell_contacts t target isects)
 
-  let count_stable_transient cs =
-    let rec loop st tr = function
-    | c :: cs ->
-        if c.kind = `Stable then loop (st + 1) tr cs else loop st (tr + 1) cs
-    | [] -> st, tr
-    in
-    loop 0 0 cs
-
-  let unique_stable_count cs =
-    let add acc c =
-      if c.kind = `Stable then Trackmate.Int_set.add c.target acc else
-      acc
-    in
-    Trackmate.Int_set.cardinal (List.fold_left add Trackmate.Int_set.empty cs)
-
-  type stats =
-    { num_contacting : int;
-      max_target_contacts : int; }
+  type stats = { num_contacting : int; }
 
   let stats cs =
     let num_contacting = ref 0 in
-    let max_target_contacts = ref 0 in
     for i = 0 to Array.length cs - 1 do
-      if cs.(i) <> [] then begin
-        let unique = unique_stable_count cs.(i) in
-        incr num_contacting;
-        max_target_contacts := Int.max !max_target_contacts unique
-      end
+      match cs.(i) with None -> () | Some c -> incr num_contacting;
     done;
-    { num_contacting = !num_contacting;
-      max_target_contacts = !max_target_contacts }
+    { num_contacting = !num_contacting }
 end
 
 let[@inline] spot_link_velocity dt s0 s1 =
@@ -305,6 +318,7 @@ let frame_range_mean_speed_sum tm c ~first ~last =
   !velocity_sum, (if !count < 0 then 0 else !count)
 
 let frame_ranges_mean_speed tm c rs =
+  (* This works on lists of intervals but nowadays we no longer use that. *)
   let rec loop tm c count sum = function
   | [] -> if count = 0 then 0. else (sum /. (float count))
   | (first, last) :: rs ->
@@ -317,73 +331,12 @@ let mean_speed tm c =
   (* That's just to make sure we understood everything well. *)
   frame_ranges_mean_speed tm c [0, Array.length c.frames - 1]
 
-let mean_speed_stable_contact tm cell cs =
-  let stable_ranges cs =
-    let add_range acc c = match c.Contact.kind with
-    | `Stable -> Contact.frame_range c :: acc  | `Transient -> acc
-    in
-    List.fold_left add_range [] cs
-  in
-  frame_ranges_mean_speed tm cell (stable_ranges cs)
+let mean_speed_contact tm cell c =
+  frame_ranges_mean_speed tm cell [(Contact.frame_range c)]
 
-let mean_speed_transient_contact tm cell cs =
-  let transient_ranges cs =
-    let add_range acc c = match c.Contact.kind with
-    | `Stable -> acc  | `Transient -> Contact.frame_range c :: acc
-    in
-    List.fold_left add_range [] cs
+let mean_speed_no_contact tm cell c =
+  let ranges =
+    if c.Contact.start_frame = 0 then [] else
+    [(0, c.Contact.start_frame - 1)]
   in
-  frame_ranges_mean_speed tm cell (transient_ranges cs)
-
-let mean_speed_no_contact tm cell cs =
-  let cs =
-    (* Make sure they are in increasing frame order. *)
-    let compare c0 c1 =
-      Int.compare c0.Contact.start_frame c1.Contact.start_frame
-    in
-    List.sort compare cs
-  in
-  let last_frame = Array.length cell.frames - 1 in
-  let rec no_contact_ranges start rs = function
-  | [] -> if start < last_frame then (start, last_frame) :: rs else rs
-  | c :: cs ->
-      let first, last = Contact.frame_range c in
-      let before = first - 1 in
-      let rs = if before >= start then (start, before) :: rs else rs in
-      no_contact_ranges (last + 1) rs cs
-  in
-  frame_ranges_mean_speed tm cell (no_contact_ranges 0 [] cs)
-
-let distances_to_start_frame ~normalize cell ~start_frame ~len =
-  let a = Array.init len @@ fun i ->
-    let s0 = cell.frames.(start_frame) in
-    let s1 = cell.frames.(start_frame + i) in
-    match s0, s1 with
-    | None, _ | _, None -> nan
-    | Some s0, Some s1 -> V2.norm V2.(s1.pos - s0.pos)
-  in
-  if not normalize then a else
-  let max = Array.fold_left Float.max_num Float.min_float a in
-  Array.map_inplace (fun v -> v /. max) a;
-  a
-
-let contact_stats tm cell cs =
-  let stable_contact c = match c.Contact.kind with
-  | `Stable -> true | `Transient  -> false
-  in
-  match List.find_opt stable_contact cs with
-  | None -> None
-  | Some contact ->
-      let start_frame = contact.Contact.start_frame in
-      let len = Array.length contact.Contact.overlaps in
-      let ds =
-        distances_to_start_frame
-          cell ~normalize:false ~start_frame ~len
-      in
-      let max_d = ref Float.nan in
-      let k = ref (-1) in
-      for i = 0 to Array.length ds - 1 do
-        let max = Float.max_num !max_d ds.(i) in
-        if not (Float.equal max !max_d) then (max_d := max; k := i)
-      done;
-      Some (!max_d, !k)
+  frame_ranges_mean_speed tm cell ranges

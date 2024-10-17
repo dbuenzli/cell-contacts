@@ -141,10 +141,6 @@ module Settings = struct
     let t_min_max_distance =
       get_float st "t_min_max_distance" ~init:Cell.Group.t_min_max_distance
     in
-    let min_frame_count =
-      get_int st "min_frame_count"
-        ~init:Cell.Contact.spec_default.min_frame_count
-    in
     let allowed_overlap_gap_length =
       get_int st "allowed_overlap_gap_length"
         ~init:Cell.Contact.spec_default.allowed_overlap_gap_length
@@ -154,14 +150,12 @@ module Settings = struct
         ~init:Cell.Contact.spec_default.min_overlap_pct
     in
     { t_scale; t_min_max_distance;
-      contact_spec = { Cell.Contact.min_frame_count;
-                       allowed_overlap_gap_length; min_overlap_pct } }
+      contact_spec = { allowed_overlap_gap_length; min_overlap_pct } }
 
   let save setts =
     let st = Brr_io.Storage.local G.window in
     let () = set_float st "t_scale" setts.t_scale in
     let () = set_float st "t_min_max_distance" setts.t_min_max_distance in
-    let () = set_int st "min_frame_count" setts.contact_spec.min_frame_count in
     let () =
       set_int st "allowed_overlap_gap_length"
         setts.contact_spec.allowed_overlap_gap_length
@@ -175,9 +169,6 @@ module Settings = struct
     let t_min_max_distance, min_max_distance_el =
       min_max_distance ~obs ~enabled init.t_min_max_distance
     in
-    let min_frame, min_frames_el =
-      min_frames_count ~obs ~enabled init.contact_spec.min_frame_count
-    in
     let allowed_overlap_gap_length, allowed_overlap_gap_length_el =
       allowed_overlap_gap_length
         ~obs ~enabled init.contact_spec.allowed_overlap_gap_length
@@ -186,27 +177,23 @@ module Settings = struct
       min_t_overlap ~enabled init.contact_spec.min_overlap_pct
     in
     let setts
-        t_scale t_min_max_distance min_frame_count allowed_overlap_gap_length
-        min_overlap_pct
+        t_scale t_min_max_distance allowed_overlap_gap_length min_overlap_pct
       =
       let contact_spec =
-        { Cell.Contact.min_frame_count; allowed_overlap_gap_length;
-          min_overlap_pct }
+        { Cell.Contact.allowed_overlap_gap_length; min_overlap_pct }
       in
       let setts = { t_scale; t_min_max_distance; contact_spec } in
       save setts; setts
     in
     let setts =
       S.app (S.app ~eq:(==)
-               (S.l3 ~eq:(==) setts t_scale t_min_max_distance min_frame)
+               (S.l2 ~eq:(==) setts t_scale t_min_max_distance)
                allowed_overlap_gap_length) min_overlap
     in
     let at = Negsp.Layout.stack ~gap:(`Sp `XXS) () in
     setts,
     El.div ~at [scale_el; min_max_distance_el],
-    El.div ~at [ min_frames_el;
-                 min_overlap_el;
-                 allowed_overlap_gap_length_el; ]
+    El.div ~at [ min_overlap_el; allowed_overlap_gap_length_el; ]
 end
 
 module Load = struct
@@ -409,14 +396,11 @@ let contact_stats contacts = (* FIXME Output.div *)
                    (float (Array.length cs))) *. 100.)
       in
       [ El.p [El.txt' (Printf.sprintf "%d (%d%%) T cells contact."
-                         stats.Cell.Contact.num_contacting pct)];
-        El.p [El.txt' (Printf.sprintf "Most active T cell visits %d targets."
-                         stats.Cell.Contact.max_target_contacts)]]
+                         stats.Cell.Contact.num_contacting pct)]]
   in
   let div = El.div ~at:[At.style (Jstr.v "margin-top: var(--sp_s)")] [] in
   let () = Note_brr.Elr.def_children div (S.map stats contacts) in
   div
-
 
 let download_at file =
   At.download (Jstr.v file) ::
@@ -445,7 +429,7 @@ let download_distances_csv ~obs ~t ~contacts =
   in
   let el = El.a ~at [a] in
   ignore (Ev.listen Ev.click (fun _ ->
-      let data = Jstr.v (Results.stable_contact_distances_to_csv
+      let data = Jstr.v (Results.contact_distances_to_csv
                            ~normalize:true
                            ~headers:true ~obs ~t ~contacts)
       in
