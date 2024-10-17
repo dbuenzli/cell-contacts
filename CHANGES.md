@@ -9,14 +9,15 @@
 * Results file. Removed column `Contacts`, `Transient`, `Tgt visited`
   `Mean sp. stbl`, `Mean sp. transt.`.
 
-* Results file. Added columns `Ctcs`, `Ctc start (fr.)`, `Ctc dur (fr.)`, 
-  `Ctc max dist`, `Ctc max dist dur (fr.)`, `Mean sp. ctc` for contacts.
+* Results file. Added columns `Ctcs`, `Ctc start (s)`, `Ctc dur (s)`, 
+  `Ctc max dist`, `Ctc max dist dur (s)`, `Mean sp. ctc` for contacts.
 
-* Results. Timings, no longer distinguish between the app table and
-  the csv table. Everything is expressed in frames and we added `Time
-  unit` and `Time interval` columns to allow converting frames to
-  physical units for comparisons (frame information is directly
-  comparable if all lines have the same values for these columns).
+* Everything is shown in `s` in the UI and in the csv results so 
+  that things can be easily correlated if manual inspection is needed.
+
+* Checks that all trackmate files have microns and seconds units.
+  The frame interval is allowed to change between observations but 
+  not in pair T-cell/target trackmate paired files.
 
 v0.0.8 2024-10-08
 -----------------

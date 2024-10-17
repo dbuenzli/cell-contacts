@@ -43,11 +43,13 @@ let max_frame = function None -> 0 | Some o -> Observation.frame_count o - 1
 let time obs frame =
   let time_label o frame =
     let t, unit = match o with
-    | None -> 0., "min"
+    | None -> 0., "s"
     | Some o -> Observation.dur_of_frame_count o ~count:frame
     in
-    let t = Printf.sprintf "%.1f" t in
-    let t = if String.length t < 4 then "\u{2007}" ^ t else t in
+    let t = Printf.sprintf "%d" (int_of_float t) in
+    let pad = 4 - Int.min (String.length t) 4 in
+    let pad = String.concat "" (List.init pad (fun _ -> "\u{2007}")) in
+    let t = pad ^ t in
     Printf.sprintf "t = %s%s" t unit
   in
   Output.span (S.l2 time_label obs frame)

@@ -40,12 +40,6 @@ let float_opt_enc =
   let td = function None -> "" | Some f -> Printf.sprintf "%.2f" f in
   { csv; td }
 
-let time_enc = (* We show it with another unit in the ui *)
-  let to_s = 1. /. 60. in
-  let csv b f = Buffer.add_string b (string_of_float f) in
-  let td f = Printf.sprintf "%.2f" (f *. to_s) in
-  { csv; td }
-
 type 'a col =
   { name : string;
     name_th : string; (* If "" [name] is used *)
@@ -89,17 +83,17 @@ let number_complex =
 (* Track duration *)
 
 let track_duration =
-  { name = "Duration"; name_th = "Duration (fr.)";
+  { name = "Duration (s)"; name_th = "";
     href = href "Duration_of_track.";
-    enc = time_enc; get = (fun _ _ _ t _ -> t.track_duration); }
+    enc = float_enc; get = (fun _ _ _ t _ -> t.track_duration); }
 
 let track_start =
-  { name = "Start"; name_th = "Start (fr.)"; href = href "Track_start.";
-    enc = time_enc; get = (fun _ _ _ t _ -> t.track_start); }
+  { name = "Start (s)"; name_th = ""; href = href "Track_start.";
+    enc = float_enc; get = (fun _ _ _ t _ -> t.track_start); }
 
 let track_stop =
-  { name = "Stop"; name_th = "Stop (fr.)"; href = href "Track_stop.";
-    enc = time_enc; get = (fun _ _ _ t _ -> t.track_stop); }
+  { name = "Stop (s)"; name_th = ""; href = href "Track_stop.";
+    enc = float_enc; get = (fun _ _ _ t _ -> t.track_stop); }
 
 let track_displacement =
   { name = "Displacement"; name_th = ""; href = href "Track_displacement.";
@@ -196,17 +190,22 @@ let contacts =
       Option.value ~default:0 (Option.map count (Option.join c)) }
 
 let contact_start =
-  { name = "Ctc start (fr.)"; name_th = ""; href = None;
-    enc = int_opt_enc;
-    get = fun _ _ _ _ c ->
-      let start_frame c = c.Cell.Contact.start_frame in
+  { name = "Ctc start (s)"; name_th = ""; href = None;
+    enc = float_opt_enc;
+    get = fun obs _ _ _ c ->
+      let start_frame c =
+        (float c.Cell.Contact.start_frame) *. Observation.time_interval obs
+      in
       Option.map start_frame (Option.join c) }
 
 let contact_len =
-  { name = "Ctc dur (fr.)"; name_th = ""; href = None;
-    enc = int_opt_enc;
-    get = fun _ _ _ _ c ->
-      let dur c = Array.length c.Cell.Contact.overlaps in
+  { name = "Ctc dur (s)"; name_th = ""; href = None;
+    enc = float_opt_enc;
+    get = fun obs _ _ _ c ->
+      let dur c =
+        (float (Array.length c.Cell.Contact.overlaps)) *.
+        Observation.time_interval obs
+      in
       Option.map dur (Option.join c); }
 
 let contact_max_dist =
@@ -217,10 +216,13 @@ let contact_max_dist =
       Option.map max (Option.join c) }
 
 let contact_dur_to_max_dist =
-  { name = "Ctc dur to max dist. (fr.)"; name_th = ""; href = None;
-    enc = int_opt_enc;
-    get = fun _ tm cell _ c ->
-      let dur c = c.Cell.Contact.distance_max in
+  { name = "Ctc dur to max dist. (s)"; name_th = ""; href = None;
+    enc = float_opt_enc;
+    get = fun obs _ _ _ c ->
+      let dur c =
+        (float c.Cell.Contact.distance_max) *.
+        Observation.time_interval obs
+      in
       Option.map dur (Option.join c)}
 
 let our_track_mean_speed =
@@ -240,16 +242,6 @@ let mean_speed_no_contact =
     enc = float_opt_enc;
     get = (fun _ tm cell _ cs ->
         Option.map (Cell.mean_speed_no_contact tm cell) (Option.join cs)) }
-
-let time_unit =
-  { name = "Time unit"; name_th = ""; href = None;
-    enc = string_enc;
-    get = (fun obs _ _ _ _ -> Observation.time_unit obs) }
-
-let time_interval =
-  { name = "Time interval"; name_th = ""; href = None;
-    enc = float_enc;
-    get = (fun obs _ _ _ _ -> Observation.time_interval obs) }
 
 let cols =
   [ C id;
@@ -278,10 +270,7 @@ let cols =
     (* Track location *)
     C track_x_location; C track_y_location; C track_z_location;
     (* Spot quality *)
-    C track_mean_quality;
-    C time_unit;
-    C time_interval;
- ]
+    C track_mean_quality; ]
 
 let to_csv ~headers ~obs ~t:cells ~contacts =
   let tm = Observation.t obs |> Option.get in

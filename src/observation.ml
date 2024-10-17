@@ -34,8 +34,14 @@ let v ~id ~t:t ~target:tgt = match t, tgt with
             "Physical unit mismatch: %s for target cells and %s for T cells\n"
             t.physical_unit target.physical_unit;
           check
+            "Physical unit %s but expected %s"
+            t.physical_unit "micron";
+          check
             "Time unit mismatch: %s for target cells and %s for T cells\n"
             t.time_unit target.time_unit;
+          check
+            "Time unit %s but expected %s"
+            t.time_unit "sec";
           check
             "Frame number mismatch: %d for target cells and %d for T cells\n"
             t.nframes target.nframes
@@ -52,8 +58,8 @@ let frame_count o = o.ref.Trackmate.nframes
 let time_unit o = match o.ref.Trackmate.time_unit with "sec" -> "s" | u -> u
 let time_interval o = o.ref.Trackmate.time_interval
 let dur_of_frame_count o ~count =
-  let unit = if time_unit o = "s" then "min" else "???" in
-  ((float count) *. time_interval o) /. 60., unit
+  let unit = if time_unit o = "s" then "s" else "???" in
+  ((float count) *. time_interval o), unit
 
 let physical_unit o = match o.ref.Trackmate.physical_unit with
 | "micron" -> "μm" | u -> u
