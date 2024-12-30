@@ -51,7 +51,7 @@ let app_file = ~/"cell-contacts.html"
 let data_url b ~type' file = (* TODO add something like that to b0 *)
   let open Fut.Syntax in
   let* favicon = B0_memo.read (B0_build.memo b) file in
-  let b64 = B0_base64.encode favicon in
+  let b64 = B0_base64.encode `Padded favicon in
   Fut.return (String.concat "" ["data:"; type'; ";base64,"; b64])
 
 let pack_app proc b =
