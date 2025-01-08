@@ -187,7 +187,7 @@ let frame_range_mean_speed_sum tm c ~first ~last =
   !velocity_sum, (if !count < 0 then 0 else !count)
 
 let frame_ranges_mean_speed c rs =
-  (* This works on lists of intervals but nowadays we no longer use that. *)
+  (* This works on lists of intervals. *)
   let rec loop tm c count sum = function
   | [] -> if count = 0 then 0. else (sum /. (float count))
   | (first, last) :: rs ->
@@ -199,6 +199,47 @@ let frame_ranges_mean_speed c rs =
 let mean_speed c =
   (* That's just to make sure we understood everything well. *)
   frame_ranges_mean_speed c [0, Array.length c.frames - 1]
+
+type track_contact_trace = [ `Transient | `Stable | `Both | `None ] array
+
+let new_trace ~length = Array.make length `None
+
+let trace_add_contact_interval ~kind trace (first, last) =
+  for i = first to last do
+    let t = match kind with
+    | `Transient ->
+        (match trace.(i) with `Stable | `Both -> `Both | _ -> `Transient)
+    | `Stable ->
+        (match trace.(i) with `Transient | `Both -> `Both | _ -> `Stable)
+    in
+    trace.(i) <- t
+  done
+
+let trace_kind_intervals ~kind trace =
+  let len = Array.length trace in
+  let is = ref [] in
+  let start = ref 0 in
+  let k = ref 0 in
+  while !start < len do
+    if not (kind trace.(!start)) then incr start else
+    begin
+      k := !start + 1;
+      while !k < len && kind trace.(!k) do incr k done;
+      is := (!start, !k - 1) :: !is;
+      start := !k
+    end
+  done;
+  List.rev !is
+
+let trace_transient_intervals trace =
+  let kind = function `Both | `Transient -> true | _ -> false in
+  trace_kind_intervals ~kind trace
+
+let trace_no_contact_intervals trace =
+  let kind = function `None -> true | _ -> false in
+  trace_kind_intervals ~kind trace
+
+(* Contact info *)
 
 module Imap = Map.Make (Int)
 
@@ -282,6 +323,22 @@ module Contact = struct
     in
     { target; start_frame; overlaps; distances; distance_max; mean_speed }
 
+  let make_contact_trace ~length ~transient ~stable =
+    let trace = new_trace ~length in
+    let add_transient (tr : transient) =
+      let range = (tr.start_frame, tr.last_frame) in
+      trace_add_contact_interval ~kind:`Transient trace range
+    in
+    Imap.iter (fun _ l -> List.iter add_transient l) transient;
+    begin match stable with
+    | None -> ()
+    | Some st ->
+        let last_frame = st.start_frame + (Array.length st.overlaps) - 1 in
+        let range = (st.start_frame, last_frame) in
+        trace_add_contact_interval ~kind:`Stable trace range
+    end;
+    trace
+
   let find spec ~t ~target ~isects =
     let cell_contacts t target isects i =
       let frame_count = Array.length isects in
@@ -337,7 +394,8 @@ module Contact = struct
       let stable, transient = match Imap.fold finish !active [] with
       | [] -> None, !transient
       | [contact] -> Some contact, !transient
-      | cs ->
+      | cs -> (* Multiple stable take the longest one and make the other ones
+                 transient *)
           let cs = List.sort sort_by_decreasing_dur cs in
           let stable, other_candidates = List.hd cs, List.tl cs in
           let transient =
@@ -364,10 +422,21 @@ module Contact = struct
         | None -> visited
         | Some st -> visited + if Imap.mem st.target transient then 0 else 1
       in
+      let trace =
+        make_contact_trace ~length:(Array.length isects) ~transient ~stable
+      in
+      let mean_speed_no_contact =
+        let no_contact = trace_no_contact_intervals trace in
+        frame_ranges_mean_speed cell no_contact
+      in
+      let mean_speed_transient_contacts =
+        let transient = trace_transient_intervals trace in
+        frame_ranges_mean_speed cell transient
+      in
       { transient_contacts;
         targets_visited;
-        mean_speed_no_contact = mean_speed_no_contact cell stable;
-        mean_speed_transient_contacts = 0.;
+        mean_speed_no_contact;
+        mean_speed_transient_contacts;
         stable; }
     in
     Array.init (Array.length t) (cell_contacts t target isects)

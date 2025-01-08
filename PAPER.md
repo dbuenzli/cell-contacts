@@ -1,4 +1,3 @@
-
 # Pre-processing
 
 The analysis is performed on the data provided by the trackmate `.xml`
@@ -17,7 +16,7 @@ each frame. First we pre-process the data of the T cells:
 We then proceed to compute polygon intersections between T cells and
 target cells at each frame. A *touch* is defined as any non-empty
 intersection between the polygon of the target cell and the polygon of
-the T cell whose surface is at least XX% of the surface of the T cell.
+the T cell whose surface is at least **XX% of the surface of the T cell.
 
 # Stable and transient contact determination
 

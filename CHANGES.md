@@ -1,11 +1,19 @@
 
+* Computation of new stable contact number, transient contact number
+  and target visited definitions.
+  
+* Computation of mean speeds during stable contact, transient contact
+  and no contact (along with the usual track mean speed).
 
-* Results file. Added columns `Visited`, `Tr ctc`, `Mean sp. tr`.
+* Results file. Added new columns `Visited`, `Tr ctc`, `Mean sp. tr`.
 
 * Results file. Renamed columns: `Ctcs` to `St ctc`, `Ctc start (s)`
   to `St start (s)`, `Ctc dur (s)` to `St dur (s)`, `Ctx max dist.`
   to `St max dist.`, `Mean sp. ctc` to `Mean sp. st`.
 
+* Results file. Changed column `St ctc` (formely named `Ctcs`). No longer
+  reports number of stable candidates (these become transient with the new
+  definitions). Reports only 0 or 1 if a stable contact was determined.
 
 v0.0.9 2024-10-18
 -----------------

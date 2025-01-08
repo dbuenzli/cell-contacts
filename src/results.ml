@@ -253,13 +253,13 @@ let our_track_mean_speed =
 
 let mean_speed_stable_contact =
   { name = "Mean sp. st"; name_th = ""; href = None;
-    enc = float_opt_enc;
+    enc = float_enc;
     get = (fun _ _ _ _ c -> match c with
-      | None -> None
+      | None -> 0.
       | Some c ->
           match c.stable with
-          | None -> None
-          | Some c -> Some c.Cell.Contact.mean_speed) }
+          | None -> 0.
+          | Some c -> c.Cell.Contact.mean_speed) }
 
 let mean_speed_transient_contacts =
   { name = "Mean sp. tr"; name_th = ""; href = None;
