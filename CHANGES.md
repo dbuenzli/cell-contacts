@@ -1,3 +1,5 @@
+v.0.1.0 2025-01-08
+------------------
 
 * Computation of new stable contact number, transient contact number
   and target visited definitions.
@@ -7,9 +9,9 @@
 
 * Results file. Added new columns `Visited`, `Tr ctc`, `Mean sp. tr`.
 
-* Results file. Renamed columns: `Ctcs` to `St ctc`, `Ctc start (s)`
-  to `St start (s)`, `Ctc dur (s)` to `St dur (s)`, `Ctx max dist.`
-  to `St max dist.`, `Mean sp. ctc` to `Mean sp. st`.
+* Results file. Renamed columns: `Ctcs` to `St ctc`, 
+  `Ctc start (s)` to `St start (s)`, `Ctc dur (s)` to `St dur (s)`, 
+  `Ctx max dist.` to `St max dist.` and `Mean sp. ctc` to `Mean sp. st`.
 
 * Results file. Changed column `St ctc` (formely named `Ctcs`). No longer
   reports number of stable candidates (these become transient with the new
