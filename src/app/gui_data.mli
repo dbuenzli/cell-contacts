@@ -45,19 +45,19 @@ val contacts :
   Results_worker.Counter.t ->
   Cell.Contact.spec Note.signal ->
   'a option Note.signal ->
-  Cell.Contact.t option Cell.Group.data option Note.signal
+  Cell.Contact.info Cell.Group.data option Note.signal
 
 val contact_stats :
-  Cell.Contact.t option Cell.Group.data option Note.signal -> El.t
+  Cell.Contact.info Cell.Group.data option Note.signal -> El.t
 
 val download_csv :
   obs:Observation.t ->
   t:Cell.Group.t ->
-  contacts:Cell.Contact.t option Cell.Group.data option ->
+  contacts:Cell.Contact.info Cell.Group.data option ->
   Brr.El.t
 
 val download_distances_csv :
   obs:Observation.t ->
   t:Cell.Group.t ->
-  contacts:Cell.Contact.t option Cell.Group.data ->
+  contacts:Cell.Contact.info Cell.Group.data ->
   Brr.El.t

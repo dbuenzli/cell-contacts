@@ -24,7 +24,7 @@ type 'a work =
     Cell.Group.t * Cell.Group.t ->
     (Cell.Group.intersections * int, string) result work
 | Cell_contacts :
-    Cell.Contact.spec -> Cell.Contact.t option Cell.Group.data option work
+    Cell.Contact.spec -> Cell.Contact.info Cell.Group.data option work
 
 val send : ?progress:(string option -> unit) -> 'a work -> 'a Fut.t
 val setup : use_worker:bool -> unit

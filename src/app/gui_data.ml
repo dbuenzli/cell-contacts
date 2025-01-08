@@ -392,11 +392,11 @@ let contact_stats contacts = (* FIXME Output.div *)
   | Some cs ->
       let stats = Cell.Contact.stats cs in
       let pct =
-        truncate (((float stats.Cell.Contact.num_contacting) /.
+        truncate (((float stats.Cell.Contact.num_stable_contact) /.
                    (float (Array.length cs))) *. 100.)
       in
-      [ El.p [El.txt' (Printf.sprintf "%d (%d%%) T cells contact."
-                         stats.Cell.Contact.num_contacting pct)]]
+      [ El.p [El.txt' (Printf.sprintf "%d (%d%%) T cells make stable contact."
+                         stats.Cell.Contact.num_stable_contact pct)]]
   in
   let div = El.div ~at:[At.style (Jstr.v "margin-top: var(--sp_s)")] [] in
   let () = Note_brr.Elr.def_children div (S.map stats contacts) in

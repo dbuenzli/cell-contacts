@@ -40,6 +40,7 @@ let spot_of_tm_spot ?(scale = 1.) (s : Trackmate.spot) =
 type id = Trackmate.track_id
 type t =
   { track_id : id;
+    tm : Trackmate.t (* has the track *) ;
     frames : spot option Observation.frames; }
 
 let[@inline] check_spot_frame frames s =
@@ -73,8 +74,8 @@ let frames_of_track ?scale (tm : Trackmate.t) (track : Trackmate.track) =
   frames
 
 let of_track ?scale tm t =
-  { track_id = t.Trackmate.tid; frames = frames_of_track ?scale tm t }
-
+  { track_id = t.Trackmate.tid; tm;
+    frames = frames_of_track ?scale tm t }
 
 module Group = struct
   type 'a data = 'a array
@@ -159,6 +160,45 @@ module Group = struct
   let t_min_max_distance = 15.
 end
 
+(* Computing mean speeds *)
+
+let[@inline] spot_link_velocity dt s0 s1 =
+  V2.norm (V2.(s1.pos - s0.pos)) /. dt
+
+let frame_range_mean_speed_sum tm c ~first ~last =
+  if first = last then 0., 0 else
+  let frame_dt = tm.Trackmate.time_interval in
+  let count = ref (-1) (* until we find the first spot *) in
+  let velocity_sum = ref 0. in
+  let dt = ref 0. in
+  let last_spot = ref nil_spot in
+  for i = first to last do match c.frames.(i) with
+  | None -> if !count <> -1 then dt := !dt +. frame_dt
+  | Some s ->
+      if !count = -1 then (last_spot := s; count := 0) else begin
+        dt := !dt +. frame_dt;
+        let v = spot_link_velocity !dt !last_spot s in
+        velocity_sum := !velocity_sum +. v;
+        incr count;
+        dt := 0.;
+        last_spot := s;
+      end
+  done;
+  !velocity_sum, (if !count < 0 then 0 else !count)
+
+let frame_ranges_mean_speed c rs =
+  (* This works on lists of intervals but nowadays we no longer use that. *)
+  let rec loop tm c count sum = function
+  | [] -> if count = 0 then 0. else (sum /. (float count))
+  | (first, last) :: rs ->
+      let rsum, rcount = frame_range_mean_speed_sum tm c ~first ~last in
+      loop tm c (count + rcount) (sum +. rsum) rs
+  in
+  loop c.tm c 0 0. rs
+
+let mean_speed c =
+  (* That's just to make sure we understood everything well. *)
+  frame_ranges_mean_speed c [0, Array.length c.frames - 1]
 
 module Imap = Map.Make (Int)
 
@@ -171,16 +211,29 @@ module Contact = struct
     { allowed_overlap_gap_length = 1;
       min_overlap_pct = 10; }
 
-  type t =
+  type stable =
     { target : Trackmate.track_id;
       start_frame : int;
       overlaps : float Observation.frames;
       distances : float Observation.frames;
       distance_max : int;
-      dropped : int; }
+      mean_speed : float; }
 
-  let frame_range c =
-    (c.start_frame, c.start_frame + Array.length c.overlaps - 1)
+  type info =
+    { transient_contacts : int;
+      targets_visited : int;
+      mean_speed_no_contact : float;
+      mean_speed_transient_contacts : float;
+      stable : stable option; }
+
+  let mean_speed_no_contact cell stable = match stable with (* Todo adjust *)
+  | None -> mean_speed cell
+  | Some c ->
+      let ranges =
+        if c.start_frame = 0 then [] else
+        [(0, c.start_frame - 1)]
+      in
+      frame_ranges_mean_speed cell ranges
 
   let sort_by_decreasing_dur c0 c1 =
     -1 * (Int.compare (Array.length c0.overlaps) (Array.length c1.overlaps))
@@ -211,14 +264,18 @@ module Contact = struct
     done;
     !k
 
-  let finish_contact spec tcell target start_frame overlaps =
+  let finish_stable_contact spec tcell target start_frame overlaps =
     let overlaps = Array.of_list (List.rev overlaps) in
     let len = Array.length overlaps in
     let distances =
       distances_to_start_frame ~normalize:false tcell ~start_frame ~len
     in
     let distance_max = find_max_distance_index distances in
-    { target; start_frame; overlaps; distances; distance_max; dropped = 0 }
+    let mean_speed =
+      let range = start_frame, start_frame + Array.length overlaps - 1 in
+      frame_ranges_mean_speed tcell [range]
+    in
+    { target; start_frame; overlaps; distances; distance_max; mean_speed }
 
   let find spec ~t ~target ~isects =
     let cell_contacts t target isects i =
@@ -263,73 +320,29 @@ module Contact = struct
           done;
       done;
       let finish target (_, start_frame, overlaps) acc =
-        finish_contact spec cell target start_frame overlaps :: acc
+        finish_stable_contact spec cell target start_frame overlaps :: acc
       in
-      match Imap.fold finish !active [] with
+      let stable = match Imap.fold finish !active [] with
       | [] -> None
       | [contact] -> Some contact
       | cs ->
           let cs = List.sort sort_by_decreasing_dur cs in
-          let count = List.length cs in
-          let dropped = count - 1 in
-          Some ({ (List.hd cs) with dropped})
+          Some (List.hd cs)
+      in
+      { transient_contacts = 0;
+        targets_visited = 0;
+        mean_speed_no_contact = mean_speed_no_contact cell stable;
+        mean_speed_transient_contacts = 0.;
+        stable; }
     in
     Array.init (Array.length t) (cell_contacts t target isects)
 
-  type stats = { num_contacting : int; }
+  type stats = { num_stable_contact : int; }
 
   let stats cs =
-    let num_contacting = ref 0 in
+    let num = ref 0 in
     for i = 0 to Array.length cs - 1 do
-      match cs.(i) with None -> () | Some c -> incr num_contacting;
+      match cs.(i).stable with None -> () | Some c -> incr num;
     done;
-    { num_contacting = !num_contacting }
+    { num_stable_contact = !num }
 end
-
-let[@inline] spot_link_velocity dt s0 s1 =
-  V2.norm (V2.(s1.pos - s0.pos)) /. dt
-
-let frame_range_mean_speed_sum tm c ~first ~last =
-  if first = last then 0., 0 else
-  let frame_dt = tm.Trackmate.time_interval in
-  let count = ref (-1) (* until we find the first spot *) in
-  let velocity_sum = ref 0. in
-  let dt = ref 0. in
-  let last_spot = ref nil_spot in
-  for i = first to last do match c.frames.(i) with
-  | None -> if !count <> -1 then dt := !dt +. frame_dt
-  | Some s ->
-      if !count = -1 then (last_spot := s; count := 0) else begin
-        dt := !dt +. frame_dt;
-        let v = spot_link_velocity !dt !last_spot s in
-        velocity_sum := !velocity_sum +. v;
-        incr count;
-        dt := 0.;
-        last_spot := s;
-      end
-  done;
-  !velocity_sum, (if !count < 0 then 0 else !count)
-
-let frame_ranges_mean_speed tm c rs =
-  (* This works on lists of intervals but nowadays we no longer use that. *)
-  let rec loop tm c count sum = function
-  | [] -> if count = 0 then 0. else (sum /. (float count))
-  | (first, last) :: rs ->
-      let rsum, rcount = frame_range_mean_speed_sum tm c ~first ~last in
-      loop tm c (count + rcount) (sum +. rsum) rs
-  in
-  loop tm c 0 0. rs
-
-let mean_speed tm c =
-  (* That's just to make sure we understood everything well. *)
-  frame_ranges_mean_speed tm c [0, Array.length c.frames - 1]
-
-let mean_speed_contact tm cell c =
-  frame_ranges_mean_speed tm cell [(Contact.frame_range c)]
-
-let mean_speed_no_contact tm cell c =
-  let ranges =
-    if c.Contact.start_frame = 0 then [] else
-    [(0, c.Contact.start_frame - 1)]
-  in
-  frame_ranges_mean_speed tm cell ranges

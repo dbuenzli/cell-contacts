@@ -24,6 +24,7 @@ type id = Trackmate.track_id
 
 type t =
   { track_id : id; (** Track used to derive the cell. *)
+    tm : Trackmate.t; (** Has the track of the cell. *)
     frames : spot option Observation.frames;
     (** Spot of the cell in each frame (if any). *) }
 
@@ -82,7 +83,7 @@ module Contact : sig
   val spec_default : spec
   (** [spec_default] is the default contact specification. *)
 
-  type t =
+  type stable =
     { target : Trackmate.track_id; (** Intersecting target cell. *)
       start_frame : int; (** First touch. *)
       overlaps : float Observation.frames;
@@ -91,31 +92,43 @@ module Contact : sig
         (** Distance to first touch, starting at [start_frame] *)
       distance_max : int;
       (** Index of maximal value in [distance_max]. *)
-      dropped : int;
-      (** Number of alternative that were dropped. Only the longest
-          one is kept. *)}
+      mean_speed : float;
+      (** Mean speed during contact. *)
+    }
+  (** The type for the stable contact information. *)
+
+  type info =
+    { transient_contacts : int; (** Number of transient contact. *)
+      targets_visited : int; (** Number of target contacted *)
+      mean_speed_no_contact : float; (** Mean speed when there is no contact. *)
+      mean_speed_transient_contacts : float;
+      (** Mean speed during transient contacts *)
+      stable : stable option; (** Stable contact (if any). *) }
 
   val find :
     spec -> t:Group.t -> target:Group.t -> isects:Group.intersections ->
-    t option Group.data
+    info Group.data
   (** Data grouped by t cell. *)
 
-  type stats = { num_contacting : int; }
+  type stats = { num_stable_contact : int; }
 
-  val stats : t option Group.data -> stats
+  val stats : info Group.data -> stats
 end
 
 (** {1:speeds Computing speeds} *)
 
-val mean_speed : Trackmate.t -> t -> float
-(** [mean_speed tm c] is our own computation of the Mean sp. parameter
+val mean_speed : t -> float
+(** [mean_speed c] is our own computation of the Mean sp. parameter
     computed by trackmate. It should yield the same result.
     [tm] is needed to get the time unit. *)
 
+(*
 val mean_speed_contact : Trackmate.t -> t -> Contact.t -> float
 (** [mean_speed_stable_contact tm c] computes the mean speed during the
     contact. *)
 
+
 val mean_speed_no_contact : Trackmate.t -> t -> Contact.t -> float
 (** [mean_speed_stable_contact tm c] computes the mean speed when there is
     no contact. *)
+*)

@@ -47,7 +47,7 @@ type 'a col =
     enc : 'a enc;
     get :
       Observation.t -> Trackmate.t ->
-      Cell.t -> Trackmate.track -> Cell.Contact.t option option -> 'a }
+      Cell.t -> Trackmate.track -> Cell.Contact.info option -> 'a }
 
 type ecol = C : 'a col -> ecol
 
@@ -186,62 +186,74 @@ let stable =
   { name = "Stable"; name_th = ""; href = None;
     enc = int_enc;
     get = fun _ _ _ _ c ->
-      let count c = c.Cell.Contact.dropped + 1 in
-      Option.value ~default:0 (Option.map count (Option.join c)) }
+      let count c = if Option.is_some c.Cell.Contact.stable then 1 else 0 in
+      Option.value ~default:0 (Option.map count c) }
 
 let stable_contact_start =
   { name = "St start (s)"; name_th = ""; href = None;
     enc = float_opt_enc;
-    get = fun obs _ _ _ c ->
-      let start_frame c =
-        (float c.Cell.Contact.start_frame) *. Observation.time_interval obs
+    get = fun obs _ _ _ c -> match c with
+    | None -> None
+    | Some c ->
+      let start_frame st =
+        (float st.Cell.Contact.start_frame) *. Observation.time_interval obs
       in
-      Option.map start_frame (Option.join c) }
+      Option.map start_frame c.stable }
 
 let stable_contact_len =
   { name = "St dur (s)"; name_th = ""; href = None;
     enc = float_opt_enc;
-    get = fun obs _ _ _ c ->
-      let dur c =
-        (float (Array.length c.Cell.Contact.overlaps)) *.
-        Observation.time_interval obs
-      in
-      Option.map dur (Option.join c); }
+    get = fun obs _ _ _ c -> match c with
+    | None -> None
+    | Some c ->
+        let dur st =
+          (float (Array.length st.Cell.Contact.overlaps)) *.
+          Observation.time_interval obs
+        in
+        Option.map dur c.stable; }
 
 let stable_contact_max_dist =
   { name = "St max dist."; name_th = ""; href = None;
     enc = float_opt_enc;
-    get = fun _ _ _ _ c ->
-      let max c = c.Cell.Contact.distances.(c.Cell.Contact.distance_max) in
-      Option.map max (Option.join c) }
+    get = fun _ _ _ _ c -> match c with
+    | None -> None
+    | Some c ->
+        let max c = c.Cell.Contact.distances.(c.Cell.Contact.distance_max) in
+        Option.map max c.stable }
 
 let stable_contact_dur_to_max_dist =
   { name = "St dur to max dist. (s)"; name_th = ""; href = None;
     enc = float_opt_enc;
-    get = fun obs _ _ _ c ->
-      let dur c =
-        (float c.Cell.Contact.distance_max) *.
-        Observation.time_interval obs
-      in
-      Option.map dur (Option.join c)}
+    get = fun obs _ _ _ c -> match c with
+    | None -> None
+    | Some c ->
+        let dur c =
+          (float c.Cell.Contact.distance_max) *. Observation.time_interval obs
+        in
+        Option.map dur c.stable}
 
 let our_track_mean_speed =
   { name = "Mean sp. (ctrl)"; name_th = ""; href = None;
     enc = float_enc;
-    get = (fun _ tm c _ _ -> Cell.mean_speed tm c); }
+    get = (fun _ tm c _ _ -> Cell.mean_speed c); }
 
-let mean_speed_contact =
+let mean_speed_stable_contact =
   { name = "Mean sp. st"; name_th = ""; href = None;
     enc = float_opt_enc;
-    get = (fun _ tm cell _ cs ->
-        Option.map (Cell.mean_speed_contact tm cell) (Option.join cs)) }
+    get = (fun _ _ _ _ c -> match c with
+      | None -> None
+      | Some c ->
+          match c.stable with
+          | None -> None
+          | Some c -> Some c.Cell.Contact.mean_speed) }
 
 let mean_speed_no_contact =
   (* Note if there is no contact this should be equal to track_mean_speed *)
   { name = "Mean sp. no ctc"; name_th = ""; href = None;
     enc = float_opt_enc;
-    get = (fun _ tm cell _ cs ->
-        Option.map (Cell.mean_speed_no_contact tm cell) (Option.join cs)) }
+    get = (fun _ _ _ _ c -> match c with
+      | None -> None
+      | Some c -> Some c.Cell.Contact.mean_speed_no_contact) }
 
 let cols =
   [ C id;
@@ -330,7 +342,7 @@ let contact_distances_to_csv ~normalize ~headers ~obs ~t:cells ~contacts =
   if headers then add_headers b;
   for i = 0 to Array.length cells - 1 do
     let cell = cells.(i) in
-    match contacts.(i) with
+    match contacts.(i).Cell.Contact.stable with
     | None -> ()
     | Some contact ->
         let ds = get_distances ~normalize contact in
@@ -361,7 +373,7 @@ let contact_distances_to_json_objs ~normalize ~obs ~t:cells ~contacts =
   let max = Array.length cells - 1 in
   for i = 0 to max do
     let cell = cells.(i) in
-    match contacts.(i) with
+    match contacts.(i).Cell.Contact.stable with
     | None -> ()
     | Some contact ->
         let ds = get_distances ~normalize contact in

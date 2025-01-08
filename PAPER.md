@@ -43,12 +43,22 @@ The number of targets visited by a T cell is the number of individual
 target cells a T cell contacted with, regardless of the number of
 times it contacted or whether this was a stable or transient contact.
 
-# Mean Speed during transient contacts
+# Mean speed during and outside contacts
 
-For each sequences of touches that make up transient contact we
-compute the speed of the cell between two consecutive touch and define
-the mean of these speeds to be the *mean speed during transient
-contacts*.
+For each sequences of frames in which a T cell has a transient contact
+we compute the speed of the T cell between two consecutive frames and
+define the mean of these speeds to be the *mean speed during transient
+contacts* of the T cell.
+
+If any, for the sequences of frames that make up the stable contact we
+compute the speed of the T cell between two consecutive frames and
+define the mean of these speeds to be the *mean speed during stable
+contacts* of the T cell.
+
+For all the sequences of frames in which the T cell makes no stable or
+transient contacts we compute the speed of the T cell between two
+consecutive frames and define the mean of these speeds to be the *mean
+speed during no contact* of the T cell.
 
 # Stable contact distances
 
