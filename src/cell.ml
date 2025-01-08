@@ -211,6 +211,11 @@ module Contact = struct
     { allowed_overlap_gap_length = 1;
       min_overlap_pct = 10; }
 
+  type transient =
+    { target : Trackmate.track_id;
+      start_frame : int;
+      last_frame : int; }
+
   type stable =
     { target : Trackmate.track_id;
       start_frame : int;
@@ -281,13 +286,20 @@ module Contact = struct
     let cell_contacts t target isects i =
       let frame_count = Array.length isects in
       let cell = t.(i) in
-      let active = Stdlib.ref Imap.empty in
+      let transient = Stdlib.ref Imap.empty in
+      let active = (* candidates for stable *) Stdlib.ref Imap.empty in
       let try_stop target = function
       | None -> None
       | Some (allowed_gap, start_frame, overlaps) ->
-          if allowed_gap = 0
-          then None
-          else Some (allowed_gap - 1, start_frame, overlaps)
+          if allowed_gap > 0
+          then Some (allowed_gap - 1, start_frame, overlaps) else begin
+            let contact =
+              let last_frame = start_frame + List.length overlaps - 1 in
+              { target; start_frame; last_frame }
+            in
+            transient := Imap.add_to_list target contact !transient;
+            None
+          end
       in
       let min_overlap_pct = float spec.min_overlap_pct /. 100. in
       for f = 0 to frame_count - 1 do match cell.frames.(f) with
@@ -322,15 +334,38 @@ module Contact = struct
       let finish target (_, start_frame, overlaps) acc =
         finish_stable_contact spec cell target start_frame overlaps :: acc
       in
-      let stable = match Imap.fold finish !active [] with
-      | [] -> None
-      | [contact] -> Some contact
+      let stable, transient = match Imap.fold finish !active [] with
+      | [] -> None, !transient
+      | [contact] -> Some contact, !transient
       | cs ->
           let cs = List.sort sort_by_decreasing_dur cs in
-          Some (List.hd cs)
+          let stable, other_candidates = List.hd cs, List.tl cs in
+          let transient =
+            let to_transient acc st =
+              let transient =
+                { target = st.target;
+                  start_frame = st.start_frame;
+                  last_frame =
+                    st.start_frame + (Array.length st.overlaps) - 1; }
+              in
+              Imap.add_to_list st.target transient acc
+            in
+            List.fold_left to_transient !transient other_candidates
+          in
+          Some stable, transient
       in
-      { transient_contacts = 0;
-        targets_visited = 0;
+      let transient_contacts =
+        let add_contacts _target cs acc = acc + List.length cs in
+        Imap.fold add_contacts transient 0
+      in
+      let targets_visited =
+        let visited = Imap.cardinal transient in
+        match stable with
+        | None -> visited
+        | Some st -> visited + if Imap.mem st.target transient then 0 else 1
+      in
+      { transient_contacts;
+        targets_visited;
         mean_speed_no_contact = mean_speed_no_contact cell stable;
         mean_speed_transient_contacts = 0.;
         stable; }
