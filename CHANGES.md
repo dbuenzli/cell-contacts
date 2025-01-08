@@ -1,6 +1,9 @@
 
-* Results file. Renamed columns: `Ctcs` to `Stable`, `Ctc start (s)`
-  to `St start (s)`, `Ctc dur (s)` to `St dur (s)`, `Ctx mac dist.`
+
+* Results file. Added columns `Visited`, `Tr ctc`, `Mean sp. tr`.
+
+* Results file. Renamed columns: `Ctcs` to `St ctc`, `Ctc start (s)`
+  to `St start (s)`, `Ctc dur (s)` to `St dur (s)`, `Ctx max dist.`
   to `St max dist.`, `Mean sp. ctc` to `Mean sp. st`.
 
 

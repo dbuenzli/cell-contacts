@@ -182,8 +182,22 @@ let id =
 
 (* Contact *)
 
+let visited =
+  { name = "Visited"; name_th = ""; href = None;
+    enc = int_enc;
+    get = fun _ _ _ _ c ->
+      let visited c = c.Cell.Contact.targets_visited in
+      Option.value ~default:0 (Option.map visited c) }
+
+let transient =
+  { name = "Tr ctc"; name_th = ""; href = None;
+    enc = int_enc;
+    get = fun _ _ _ _ c ->
+      let visited c = c.Cell.Contact.transient_contacts in
+      Option.value ~default:0 (Option.map visited c) }
+
 let stable =
-  { name = "Stable"; name_th = ""; href = None;
+  { name = "St ctc"; name_th = ""; href = None;
     enc = int_enc;
     get = fun _ _ _ _ c ->
       let count c = if Option.is_some c.Cell.Contact.stable then 1 else 0 in
@@ -247,6 +261,13 @@ let mean_speed_stable_contact =
           | None -> None
           | Some c -> Some c.Cell.Contact.mean_speed) }
 
+let mean_speed_transient_contacts =
+  { name = "Mean sp. tr"; name_th = ""; href = None;
+    enc = float_opt_enc;
+    get = (fun _ _ _ _ c -> match c with
+      | None -> None
+      | Some c -> Some c.Cell.Contact.mean_speed_transient_contacts) }
+
 let mean_speed_no_contact =
   (* Note if there is no contact this should be equal to track_mean_speed *)
   { name = "Mean sp. no ctc"; name_th = ""; href = None;
@@ -257,16 +278,20 @@ let mean_speed_no_contact =
 
 let cols =
   [ C id;
+    C visited;
+    C transient;
     C stable;
-    C stable_contact_start;
-    C stable_contact_len;
-    C stable_contact_max_dist;
-    C stable_contact_dur_to_max_dist;
+    C mean_speed_transient_contacts;
     C mean_speed_stable_contact;
     C mean_speed_no_contact;
 (*    C our_track_mean_speed; *)
     C track_mean_speed;
-    C track_start; C track_stop;
+    C stable_contact_start;
+    C stable_contact_len;
+    C stable_contact_max_dist;
+    C stable_contact_dur_to_max_dist;
+    C track_start;
+    C track_stop;
     C max_distance_traveled;
     (* Linear track analysis *)
     C total_distance_traveled; C confinement_ratio;
