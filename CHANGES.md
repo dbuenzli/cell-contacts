@@ -1,3 +1,9 @@
+
+* Results file. Renamed columns: `Ctcs` to `Stable`, `Ctc start (s)`
+  to `St start (s)`, `Ctc dur (s)` to `St dur (s)`, `Ctx mac dist.`
+  to `St max dist.`, `Mean sp. ctc` to `Mean sp. st`.
+
+
 v0.0.9 2024-10-18
 -----------------
 

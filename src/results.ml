@@ -182,15 +182,15 @@ let id =
 
 (* Contact *)
 
-let contacts =
-  { name = "Ctcs"; name_th = ""; href = None;
+let stable =
+  { name = "Stable"; name_th = ""; href = None;
     enc = int_enc;
     get = fun _ _ _ _ c ->
       let count c = c.Cell.Contact.dropped + 1 in
       Option.value ~default:0 (Option.map count (Option.join c)) }
 
-let contact_start =
-  { name = "Ctc start (s)"; name_th = ""; href = None;
+let stable_contact_start =
+  { name = "St start (s)"; name_th = ""; href = None;
     enc = float_opt_enc;
     get = fun obs _ _ _ c ->
       let start_frame c =
@@ -198,8 +198,8 @@ let contact_start =
       in
       Option.map start_frame (Option.join c) }
 
-let contact_len =
-  { name = "Ctc dur (s)"; name_th = ""; href = None;
+let stable_contact_len =
+  { name = "St dur (s)"; name_th = ""; href = None;
     enc = float_opt_enc;
     get = fun obs _ _ _ c ->
       let dur c =
@@ -208,15 +208,15 @@ let contact_len =
       in
       Option.map dur (Option.join c); }
 
-let contact_max_dist =
-  { name = "Ctc max dist."; name_th = ""; href = None;
+let stable_contact_max_dist =
+  { name = "St max dist."; name_th = ""; href = None;
     enc = float_opt_enc;
     get = fun _ _ _ _ c ->
       let max c = c.Cell.Contact.distances.(c.Cell.Contact.distance_max) in
       Option.map max (Option.join c) }
 
-let contact_dur_to_max_dist =
-  { name = "Ctc dur to max dist. (s)"; name_th = ""; href = None;
+let stable_contact_dur_to_max_dist =
+  { name = "St dur to max dist. (s)"; name_th = ""; href = None;
     enc = float_opt_enc;
     get = fun obs _ _ _ c ->
       let dur c =
@@ -231,7 +231,7 @@ let our_track_mean_speed =
     get = (fun _ tm c _ _ -> Cell.mean_speed tm c); }
 
 let mean_speed_contact =
-  { name = "Mean sp. ctc"; name_th = ""; href = None;
+  { name = "Mean sp. st"; name_th = ""; href = None;
     enc = float_opt_enc;
     get = (fun _ tm cell _ cs ->
         Option.map (Cell.mean_speed_contact tm cell) (Option.join cs)) }
@@ -245,12 +245,12 @@ let mean_speed_no_contact =
 
 let cols =
   [ C id;
-    C contacts;
-    C contact_start;
-    C contact_len;
-    C contact_max_dist;
-    C contact_dur_to_max_dist;
-    C mean_speed_contact;
+    C stable;
+    C stable_contact_start;
+    C stable_contact_len;
+    C stable_contact_max_dist;
+    C stable_contact_dur_to_max_dist;
+    C mean_speed_stable_contact;
     C mean_speed_no_contact;
 (*    C our_track_mean_speed; *)
     C track_mean_speed;
