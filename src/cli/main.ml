@@ -223,8 +223,8 @@ let results =
          info ["f"; "output-format"] ~doc ~docv:"FMT")
   in
   let outf =
-    let doc = "Output file. Use $(b,-) for stdout." and docv = "FILE" in
-    Arg.(value & opt B0_std_cli.fpath Fpath.dash & info ["o"] ~doc ~docv)
+    let doc = "Output file. Use $(b,-) for stdout." in
+    Arg.(value & opt B0_std_cli.filepath Fpath.dash & info ["o"] ~doc)
   in
   let no_isect =
     let doc = "Do not intersect." in
