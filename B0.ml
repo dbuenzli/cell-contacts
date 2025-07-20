@@ -25,12 +25,7 @@ let cell_contacts_cli =
   let doc = "Cell contacts batch processing" in
   let srcs = [`Dir ~/"src"; `Dir_rec ~/"src/cli";] in
   let requires = [b0_std; fmt; gg; gg_kit; vg; vg_pdf; cmdliner; xmlm] in
-  let meta =
-    (* TODO b0: don't let jsoo builds downgrade everything to bytecode *)
-    B0_meta.empty
-    |> B0_meta.add B0_ocaml.Code.needs `Native
-  in
-  B0_ocaml.exe "cell-contacts" ~doc ~meta ~srcs ~requires
+  B0_ocaml.exe "cell-contacts" ~doc ~srcs ~requires
 
 (* HTML GUI *)
 

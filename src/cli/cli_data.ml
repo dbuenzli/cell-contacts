@@ -41,7 +41,11 @@ let find_file_pairs files =
   List.fold_left find String.Map.empty files
 
 let find_observations_in_dir dir =
-  let* files = Os.Dir.fold_files ~recurse:false Os.Dir.path_list dir [] in
+  let* files =
+    let dotfiles = false and follow_symlinks = false and recurse = false in
+    Os.Dir.fold_files
+      ~dotfiles ~follow_symlinks ~recurse Os.Dir.path_list dir []
+  in
   Ok (find_file_pairs files)
 
 let read_trackmate ~kind file =
