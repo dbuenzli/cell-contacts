@@ -38,7 +38,7 @@ let intersections no_isect obs ~t_scale ~t_min_max_distance =
   Ok (t, target, isect)
 
 let to_pdf ~outf obs target t isect =
-  time (fun _ m -> m "Rendered %a" Fpath.pp outf) @@ fun () ->
+  time (fun _ m -> m "Rendered %a" Filepath.pp outf) @@ fun () ->
   Result.join @@
   match target, t with
   | None, None -> assert (false);
@@ -56,7 +56,7 @@ let results
     ~contact_spec ~no_normalize
   =
   Log.if_error ~use:1 @@
-  let* dir = Fpath.of_string obs_dir in
+  let* dir = Filepath.of_string obs_dir in
   let* obss = Cli_data.load_observations dir in
   match out_fmt with
   | `Pdf ->
@@ -115,7 +115,7 @@ let results
       in
       let err, res =
         time begin fun (_, res) m ->
-          m "Processed %d observations from %a" (List.length res) Fpath.pp dir
+          m "Processed %d observations from %a" (List.length res) Filepath.pp dir
         end @@ fun () ->
         add_obs ~err:false ~headers:true [] obss in
       let res =
@@ -141,7 +141,7 @@ let debug dir id scale min_max_distance (contact_spec : Cell.Contact.spec) =
     done
   in
   Log.if_error ~use:1 @@
-  let* dir = Fpath.of_string dir in
+  let* dir = Filepath.of_string dir in
   let* obss = Cli_data.load_observations dir in
   let obs = List.hd obss in
   match Observation.target obs, Observation.t obs with
@@ -224,7 +224,7 @@ let results =
   in
   let outf =
     let doc = "Output file. Use $(b,-) for stdout." in
-    Arg.(value & opt B0_std_cli.filepath Fpath.dash & info ["o"] ~doc)
+    Arg.(value & opt B0_std_cli.file Filepath.dash & info ["o"] ~doc)
   in
   let no_isect =
     let doc = "Do not intersect." in

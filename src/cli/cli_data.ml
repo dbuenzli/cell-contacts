@@ -8,7 +8,7 @@ open Result.Syntax
 
 let time fm f = Log.time ~level:Log.Info fm f
 
-type pair = { t : Fpath.t option; target : Fpath.t option }
+type pair = { t : Filepath.t option; target : Filepath.t option }
 
 let add_t id file m =
   let upd = function
@@ -26,11 +26,11 @@ let add_target id file m =
 
 let find_file_pairs files =
   let warn file =
-    Log.warn (fun m -> m "Don't know what to do with %a" Fpath.pp file)
+    Log.warn (fun m -> m "Don't know what to do with %a" Filepath.pp file)
   in
   let find acc file =
-    if not (Fpath.has_ext ".xml" file) then (warn file; acc) else
-    let fname = Fpath.basename file in
+    if not (Filepath.has_ext ".xml" file) then (warn file; acc) else
+    let fname = Filepath.basename file in
     match Observation.is_t_filename fname with
     | Some id -> add_t id file acc
     | None ->
@@ -55,12 +55,12 @@ let read_trackmate ~kind file =
   end @@ fun () -> match file with
   | None -> Ok None
   | Some file ->
-      Result.map Option.some @@ Trackmate_xmlm.of_file (Fpath.to_string file)
+      Result.map Option.some @@ Trackmate_xmlm.of_file (Filepath.to_string file)
 
 let load_observations dir =
   time begin fun obs m -> match obs with
   | Ok obs ->
-      m "Read %d observations from %a" (List.length obs) Fpath.pp dir
+      m "Read %d observations from %a" (List.length obs) Filepath.pp dir
   | _ -> obs
   end @@ fun () ->
   let* m = find_observations_in_dir dir in

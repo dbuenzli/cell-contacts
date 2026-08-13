@@ -114,7 +114,7 @@ let mount =
   let umount d = Os.Cmd.run Cmd.(arg "umount" %% path d) in
   let mount unmount =
     Os.Exit.of_result @@
-    let dir = Fpath.(B0_env.scope_dir env // mount_dir) in
+    let dir = Filepath.(B0_env.scope_dir env // mount_dir) in
     match unmount with
     | true ->
         let* exists = Os.Dir.exists dir in
@@ -134,7 +134,7 @@ let deploy =
   let doc = "Build and deploy to mount directory" in
   B0_unit.of_action "deploy" ~units:[cell_contacts_app] ~doc @@
   fun env _ ~args ->
-  let dir = Fpath.(B0_env.scope_dir env // mount_dir) in
+  let dir = Filepath.(B0_env.scope_dir env // mount_dir) in
   let mount_error = Error "No deploy directory use 'b0 -- mount' first" in
   let* exists = Os.Dir.exists dir in
   if not exists then mount_error else
@@ -147,11 +147,11 @@ let deploy =
       B0_env.in_unit_dir env cell_contacts_app app_file ]
   in
   let copy ~dst:dir file =
-    Os.Cmd.run Cmd.(arg "cp" %% path file %%path Fpath.(dir / basename file))
+    Os.Cmd.run Cmd.(arg "cp" %% path file %%path Filepath.(dir / basename file))
 (*
     Os.File.copy
       ~atomic:false (* This trips webdav *)
-      ~force:true ~make_path:false ~src:f Fpath.(dir / basename f) *)
+      ~force:true ~make_path:false ~src:f Filepath.(dir / basename f) *)
   in
   let* () = List.iter_stop_on_error (copy ~dst:dir) files in
   Ok ()

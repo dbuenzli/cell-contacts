@@ -7,5 +7,5 @@
 
 open B0_std
 
-val load_observations : Fpath.t -> (Observation.t list, string) result
+val load_observations : Filepath.t -> (Observation.t list, string) result
 (** [load_observations dir] loads observations from the directory [dir]. *)
